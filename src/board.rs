@@ -91,7 +91,7 @@ impl fmt::Display for Piece {
     }
 }
 
-pub const BOARD_NB: usize = 8;
+pub const RANK_NB: usize = 8;
 
 /// Board.
 pub struct Board {
@@ -101,13 +101,13 @@ pub struct Board {
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for iy in 0..BOARD_NB {
+        for iy in 0..RANK_NB {
             if iy > 0 {
                 writeln!(f)?;
             }
-            for ix in 0..BOARD_NB {
-                write!(f, "{}", self.grid[iy * BOARD_NB + ix])?;
-                if ix < BOARD_NB - 1 {
+            for ix in 0..RANK_NB {
+                write!(f, "{}", self.grid[iy * RANK_NB + ix])?;
+                if ix < RANK_NB - 1 {
                     write!(f, " ")?;
                 }
             }
@@ -135,12 +135,12 @@ impl FromStr for Board {
         for c in s.chars() {
             let piece = match c {
                 '/' => {
-                    if ix != BOARD_NB {
+                    if ix != RANK_NB {
                         return Err("invalid row.".to_string())
                     }
                     ix = 0;
                     iy += 1;
-                    if iy == BOARD_NB {
+                    if iy == RANK_NB {
                         return Err("too many rows.".to_string())
                     }
                     continue;
@@ -167,17 +167,17 @@ impl FromStr for Board {
                 'c' => Piece::WArcher2,
                 c => {
                     let i = c as i32 - 48;
-                    if i < 0 || ix + i as usize > BOARD_NB {
+                    if i < 0 || ix + i as usize > RANK_NB {
                         return Err(format!("invalid char: {}.", c))
                     }
                     ix += i as usize;
                     continue;
                 }
             };
-            board.grid[iy * BOARD_NB + ix] = piece;
+            board.grid[iy * RANK_NB + ix] = piece;
             ix += 1;
         }
-        if ix != BOARD_NB || iy != BOARD_NB - 1 {
+        if ix != RANK_NB || iy != RANK_NB - 1 {
             Err("invalid number.".to_string())
         } else {
             Ok(board)
@@ -192,7 +192,16 @@ mod tests {
     #[test]
     fn initial_position() {
         let board: Board = "bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB".parse().unwrap();
-        let answer = "a1 n  g  k' p  g  n  a1\nl  l  h  h  h  h  l  l \n.  .  .  .  .  .  .  . \n.  .  .  .  .  .  .  . \n.  .  .  .  .  .  .  . \n.  .  .  .  .  .  .  . \nL  L  H  H  H  H  L  L \nA1 K  G  P  K' G  K  A1";
+        let answer = "\
+            a1 n  g  k' p  g  n  a1\n\
+            l  l  h  h  h  h  l  l \n\
+            .  .  .  .  .  .  .  . \n\
+            .  .  .  .  .  .  .  . \n\
+            .  .  .  .  .  .  .  . \n\
+            .  .  .  .  .  .  .  . \n\
+            L  L  H  H  H  H  L  L \n\
+            A1 K  G  P  K' G  K  A1\
+        ";
         assert_eq!(format!("{}", board), answer.to_string());
     }
 }
