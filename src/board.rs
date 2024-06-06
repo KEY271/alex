@@ -101,15 +101,15 @@ pub struct Board {
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for iy in 0..RANK_NB {
-            if iy > 0 {
-                writeln!(f)?;
-            }
+        for iy in (0..RANK_NB).rev() {
             for ix in 0..RANK_NB {
                 write!(f, "{}", self.grid[iy * RANK_NB + ix])?;
                 if ix < RANK_NB - 1 {
                     write!(f, " ")?;
                 }
+            }
+            if iy > 0 {
+                writeln!(f)?;
             }
         }
         Ok(())
@@ -131,7 +131,7 @@ impl FromStr for Board {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut board = Board::new();
         let mut ix = 0;
-        let mut iy = 0;
+        let mut iy = RANK_NB - 1;
         for c in s.chars() {
             let piece = match c {
                 '/' => {
@@ -139,7 +139,7 @@ impl FromStr for Board {
                         return Err("invalid row.".to_string())
                     }
                     ix = 0;
-                    iy += 1;
+                    iy -= 1;
                     if iy == RANK_NB {
                         return Err("too many rows.".to_string())
                     }
@@ -177,7 +177,7 @@ impl FromStr for Board {
             board.grid[iy * RANK_NB + ix] = piece;
             ix += 1;
         }
-        if ix != RANK_NB || iy != RANK_NB - 1 {
+        if ix != RANK_NB || iy != 0 {
             Err("invalid number.".to_string())
         } else {
             Ok(board)
