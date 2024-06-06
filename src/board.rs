@@ -1,7 +1,10 @@
 use core::fmt;
-use std::str::FromStr;
+use std::{fmt::Write, str::FromStr};
 
 use num_derive::FromPrimitive;
+use num_traits::FromPrimitive;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 /// Square of the grid.
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -16,10 +19,25 @@ pub enum Square {
     A7, B7, C7, D7, E7, F7, G7, H7,
     A8, B8, C8, D8, E8, F8, G8, H8,
 }
+/// Count of squares.
 pub const SQUARE_NB: usize = 64;
 
+/// Count of ranks.
+pub const RANK_NB: usize = 8;
+
+macro_rules! for_pos {
+    ($ix:ident, $iy:ident, $i:ident, $e:expr) => {
+        for $iy in 0..RANK_NB {
+            for $ix in 0..RANK_NB {
+                let $i = $iy * RANK_NB + $ix;
+                $e;
+            }
+        }
+    };
+}
+
 /// Type of the piece.
-#[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(FromPrimitive, EnumIter, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[repr(usize)]
 pub enum PieceType {
     None, Light, Heavy, King1, King2, Prince1, Prince2, General, Knight, Arrow, Archer0, Archer1, Archer2,
@@ -54,6 +72,9 @@ pub enum Piece {
     PAD1, PAD2, PAD3, PAD4,
     WLight, WHeavy, WKing1, WKing2, WPrince1, WPrince2, WGeneral, WKnight, WArrow, WArcher0, WArcher1, WArcher2,
 }
+
+/// Count of pieces.
+pub const PIECE_NB: usize = 29;
 
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -91,12 +112,69 @@ impl fmt::Display for Piece {
     }
 }
 
-pub const RANK_NB: usize = 8;
+/// Type of the side.
+/// Black takes the first move.
+#[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[repr(usize)]
+pub enum Side {
+    Black, White
+}
+
+/// Count of sides.
+pub const SIDE_NB: usize = 2;
+
+impl PieceType {
+    pub fn into_piece(&self, side: Side) -> Piece {
+        if side == Side::Black {
+            Piece::from_usize(*self as usize).unwrap()
+        } else {
+            Piece::from_usize(*self as usize + 16).unwrap()
+        }
+    }
+}
+
+/// Bitboard.
+pub type Bitboard = u64;
+
+pub fn pretty(bb: Bitboard) -> String {
+    let mut output = String::new();
+    for iy in (0..RANK_NB).rev() {
+        for ix in 0..RANK_NB {
+            let _ = write!(&mut output, "{}", bit(bb, iy * RANK_NB + ix));
+        }
+        if iy > 0 {
+            let _ = writeln!(&mut output);
+        }
+    }
+    output
+}
+
+fn bit(bb: Bitboard, i: usize) -> u64 {
+    (bb >> i) & 1
+}
+
+/// Changes a bit of the bitboard.
+macro_rules! change_bit {
+    ($b:expr, $i:expr) => {
+        $b ^= 1 << $i;
+    };
+}
+
+/// Returns a y-flipped bitboard.
+fn flipped(bb: Bitboard) -> Bitboard {
+    let mut new_bb = 0;
+    for i in 0..RANK_NB {
+        new_bb ^= ((bb >> (i * RANK_NB)) & 0xFF) << (SQUARE_NB - RANK_NB - i * RANK_NB);
+    }
+    new_bb
+}
 
 /// Board.
 pub struct Board {
     /// Piece at the square.
     pub grid: [Piece; SQUARE_NB],
+    /// Squares the piece can move to.
+    pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
 }
 
 impl fmt::Display for Board {
@@ -119,7 +197,58 @@ impl fmt::Display for Board {
 impl Board {
     /// Create an empty board.
     pub fn new() -> Board {
+        let mut movable_sq = [[0; SQUARE_NB]; PIECE_NB];
+        for pt in PieceType::iter() {
+            if pt == PieceType::None {
+                continue;
+            }
+            for_pos!(ix, iy, i, {
+                let mut bb = 0;
+                for_pos!(jx, jy, j, {
+                    match pt {
+                        PieceType::None => continue,
+                        PieceType::Light | PieceType::Heavy => {
+                            if ix == jx && iy + 1 == jy
+                                || iy >= 5 && ix.abs_diff(jx) == 1 && iy == jy {
+                                change_bit!(bb, j);
+                            }
+                        },
+                        PieceType::King1 | PieceType::King2 => {
+                            if ix.abs_diff(jx) <= 1 && iy.abs_diff(jy) <= 1 && !(ix == jx && iy == jy) {
+                                change_bit!(bb, j);
+                            }
+                        },
+                        PieceType::Prince1 | PieceType::Prince2 => {
+                            if ix == jx && iy + 1 == jy
+                                || ix.abs_diff(jx) == 1 && iy.abs_diff(jy) == 1 {
+                                change_bit!(bb, j);
+                            }
+                        },
+                        PieceType::General => {
+                            if ix.abs_diff(jx) + iy.abs_diff(jy) == 1
+                                || ix.abs_diff(jx) == 1 && iy + 1 == jy {
+                                change_bit!(bb, j);
+                            }
+                        },
+                        PieceType::Knight => {
+                            if ix.abs_diff(jx) + iy.abs_diff(jy) == 3 && (ix != jx || iy != jy) {
+                                change_bit!(bb, j);
+                            }
+                        },
+                        PieceType::Arrow => continue,
+                        PieceType::Archer0 | PieceType::Archer1 | PieceType::Archer2 => {
+                            if ix.abs_diff(jx) + iy.abs_diff(jy) == 1 {
+                                change_bit!(bb, j);
+                            }
+                        },
+                    }
+                });
+                movable_sq[pt.into_piece(Side::Black) as usize][i] = bb;
+                movable_sq[pt.into_piece(Side::White) as usize][(RANK_NB - 1 - iy) * RANK_NB + ix] = flipped(bb);
+            });
+        }
         Board {
+            movable_sq,
             grid: [Piece::None; SQUARE_NB]
         }
     }
@@ -188,7 +317,6 @@ impl FromStr for Board {
 #[cfg(test)]
 mod tests {
     use crate::board::Board;
-
     #[test]
     fn initial_position() {
         let board: Board = "bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB".parse().unwrap();

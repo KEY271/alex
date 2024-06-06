@@ -1,8 +1,10 @@
 use std::str::FromStr;
 
-use board::Board;
+use board::{pretty, Board, Piece, Square};
 
 extern crate num_derive;
+
+extern crate strum;
 
 mod board;
 
