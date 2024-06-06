@@ -169,12 +169,22 @@ fn flipped(bb: Bitboard) -> Bitboard {
     new_bb
 }
 
+/// Count of occupation.
+pub const OCC_NB: usize = 64;
+
 /// Board.
 pub struct Board {
     /// Piece at the square.
     pub grid: [Piece; SQUARE_NB],
     /// Squares the piece can move to.
     pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
+
+    diagonal_mask: [Bitboard; SQUARE_NB],
+    anti_diagonal_mask: [Bitboard; SQUARE_NB],
+    rank_mask: [Bitboard; SQUARE_NB],
+
+    fill_up_attacks: [[Bitboard; RANK_NB]; OCC_NB],
+    a_file_attacks: [[Bitboard; RANK_NB]; OCC_NB],
 }
 
 impl fmt::Display for Board {
@@ -247,10 +257,109 @@ impl Board {
                 movable_sq[pt.into_piece(Side::White) as usize][(RANK_NB - 1 - iy) * RANK_NB + ix] = flipped(bb);
             });
         }
+
+        let mut diagonal_mask = [0; SQUARE_NB];
+        let mut anti_diagonal_mask = [0; SQUARE_NB];
+        let mut rank_mask = [0; SQUARE_NB];
+        for_pos!(ix, iy, i, {
+            for_pos!(jx, jy, j, {
+                if ix + jy == iy + jx {
+                    change_bit!(diagonal_mask[i], j);
+                }
+                if ix + iy == jx + jy {
+                    change_bit!(anti_diagonal_mask[i], j);
+                }
+                if iy == jy {
+                    change_bit!(rank_mask[i], j);
+                }
+            });
+        });
+
+        let mut fill_up_attacks = [[0; RANK_NB]; OCC_NB];
+        for file in 0..RANK_NB {
+            for occ in 0..OCC_NB {
+                let mut u = 0;
+                // Check left of the square.
+                if file > 0 {
+                    for i in (0..file).rev() {
+                        u |= 1 << i;
+                        if (occ << 1) & (1 << i) != 0 {
+                            break;
+                        }
+                    }
+                }
+                // Check right of the square.
+                for i in file+1..RANK_NB {
+                    u |= 1 << i;
+                    if (occ << 1) & (1 << i) != 0 {
+                        break;
+                    }
+                }
+                // Fill up.
+                u |= u << 8;
+                u |= u << 16;
+                u |= u << 32;
+                fill_up_attacks[occ][file] = u;
+            }
+        }
+        let mut a_file_attacks = [[0; RANK_NB]; OCC_NB];
+        for rank in 0..RANK_NB {
+            for occ in 0..OCC_NB {
+                let mut u = 0;
+                // Check below the square.
+                if rank > 0 {
+                    for i in (0..rank).rev() {
+                        u |= 1 << (i * RANK_NB);
+                        if (occ << 1) & (1 << i) != 0 {
+                            break;
+                        }
+                    }
+                }
+                // Check above the square.
+                for i in rank+1..RANK_NB {
+                    u |= 1 << (i * RANK_NB);
+                    if (occ << 1) & (1 << i) != 0 {
+                        break;
+                    }
+                }
+                a_file_attacks[occ][rank] = u;
+            }
+        }
         Board {
             movable_sq,
+            diagonal_mask,
+            anti_diagonal_mask,
+            rank_mask,
+            fill_up_attacks,
+            a_file_attacks,
             grid: [Piece::None; SQUARE_NB]
         }
+    }
+
+    pub fn diagonal_attacks(&self, occ: u64, sq: Square) -> Bitboard {
+        let bfile = 0x0202020202020202;
+        let occ = (self.diagonal_mask[sq as usize] & occ).wrapping_mul(bfile) >> 58;
+        self.diagonal_mask[sq as usize] & self.fill_up_attacks[occ as usize][sq as usize & 7]
+    }
+
+    pub fn anti_diagonal_attacks(&self, occ: u64, sq: Square) -> Bitboard {
+        let bfile = 0x0202020202020202;
+        let occ = (self.anti_diagonal_mask[sq as usize] & occ).wrapping_mul(bfile) >> 58;
+        self.anti_diagonal_mask[sq as usize] & self.fill_up_attacks[occ as usize][sq as usize & 7]
+    }
+
+    pub fn rank_attacks(&self, occ: u64, sq: Square) -> Bitboard {
+        let bfile = 0x0202020202020202;
+        let occ = (self.rank_mask[sq as usize] & occ).wrapping_mul(bfile) >> 58;
+        self.rank_mask[sq as usize] & self.fill_up_attacks[occ as usize][sq as usize & 7]
+    }
+
+    pub fn file_attacks(&self, occ: u64, sq: Square) -> Bitboard {
+        let afile = 0x0101010101010101;
+        let diagonal_a2_h7 = 0x0080402010080400;
+        let occ = afile & (occ >> (sq as usize & 7));
+        let occ = occ.wrapping_mul(diagonal_a2_h7) >> 58;
+        self.a_file_attacks[occ as usize][sq as usize >> 3] << (sq as usize & 7)
     }
 }
 
