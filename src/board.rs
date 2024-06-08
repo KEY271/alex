@@ -1,10 +1,12 @@
 use core::fmt;
-use std::{fmt::Write, str::FromStr};
+use std::{fmt::Write, ops::Not, str::FromStr};
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+
+use crate::movegen::{get_from, get_move_type, get_to, Move, MoveType};
 
 /// Square of the grid.
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -25,6 +27,14 @@ pub const SQUARE_NB: usize = 64;
 /// Count of ranks.
 pub const RANK_NB: usize = 8;
 
+impl fmt::Display for Square {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ix = *self as usize % RANK_NB;
+        let iy = *self as usize / RANK_NB;
+        write!(f, "{}{}", (ix + 65) as u8 as char, iy + 1)
+    }
+}
+
 macro_rules! for_pos {
     ($ix:ident, $iy:ident, $i:ident, $e:expr) => {
         for $iy in 0..RANK_NB {
@@ -42,6 +52,9 @@ macro_rules! for_pos {
 pub enum PieceType {
     None, Light, Heavy, King1, King2, Prince1, Prince2, General, Knight, Arrow, Archer0, Archer1, Archer2,
 }
+
+/// Count of piece types.
+pub const PIECE_TYPE_NB: usize = 13;
 
 impl fmt::Display for PieceType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -87,7 +100,7 @@ impl fmt::Display for Piece {
             Piece::BPrince1 => write!(f, "P "),
             Piece::BPrince2 => write!(f, "P'"),
             Piece::BGeneral => write!(f, "G "),
-            Piece::BKnight  => write!(f, "K "),
+            Piece::BKnight  => write!(f, "N "),
             Piece::BArrow   => write!(f, "R "),
             Piece::BArcher0 => write!(f, "A0"),
             Piece::BArcher1 => write!(f, "A1"),
@@ -123,6 +136,17 @@ pub enum Side {
 /// Count of sides.
 pub const SIDE_NB: usize = 2;
 
+impl Not for Side {
+    type Output = Side;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Side::Black => Side::White,
+            Side::White => Side::Black,
+        }
+    }
+}
+
 impl PieceType {
     pub fn into_piece(&self, side: Side) -> Piece {
         if side == Side::Black {
@@ -133,10 +157,20 @@ impl PieceType {
     }
 }
 
+impl Piece {
+    pub fn split(&self) -> (PieceType, Side) {
+        if *self >= Piece::WLight {
+            (PieceType::from_usize(*self as usize - 16).unwrap(), Side::White)
+        } else {
+            (PieceType::from_usize(*self as usize).unwrap(), Side::Black)
+        }
+    }
+}
+
 /// Bitboard.
 pub type Bitboard = u64;
 
-pub fn pretty(bb: Bitboard) -> String {
+pub fn pretty_bb(bb: Bitboard) -> String {
     let mut output = String::new();
     for iy in (0..RANK_NB).rev() {
         for ix in 0..RANK_NB {
@@ -160,6 +194,31 @@ macro_rules! change_bit {
     };
 }
 
+fn popcount(bb: Bitboard) -> u64 {
+    let bb = (bb & 0x5555555555555555) + ((bb >> 1) & 0x5555555555555555);
+    let bb = (bb & 0x3333333333333333) + ((bb >> 2) & 0x3333333333333333);
+    let bb = (bb & 0x0f0f0f0f0f0f0f0f) + ((bb >> 4) & 0x0f0f0f0f0f0f0f0f);
+    let bb = (bb & 0x00ff00ff00ff00ff) + ((bb >> 8) & 0x00ff00ff00ff00ff);
+    let bb = (bb & 0x0000ffff0000ffff) + ((bb >> 16) & 0x0000ffff0000ffff);
+    (bb & 0x00000000ffffffff) + ((bb >> 32) & 0x000000ffffffffff)
+}
+
+pub fn get_pos(bb: Bitboard) -> Square {
+    Square::from_u64(popcount((bb & bb.wrapping_neg()) - 1)).unwrap()
+}
+
+#[macro_export]
+macro_rules! foreach_bb {
+    ($board:expr, $sq:ident, $e:expr) => {
+        let mut bb = $board;
+        while bb != 0 {
+            let $sq = get_pos(bb);
+            $e;
+            bb &= bb.wrapping_sub(1);
+        }
+    };
+}
+
 /// Returns a y-flipped bitboard.
 fn flipped(bb: Bitboard) -> Bitboard {
     let mut new_bb = 0;
@@ -174,10 +233,18 @@ pub const OCC_NB: usize = 64;
 
 /// Board.
 pub struct Board {
+    /// Side.
+    pub side: Side,
     /// Piece at the square.
     pub grid: [Piece; SQUARE_NB],
     /// Squares the piece can move to.
     pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
+    /// Bitboards of the piece type with side.
+    pub boards: [[Bitboard; PIECE_TYPE_NB]; SIDE_NB],
+    /// Bitboard of occupied squares.
+    pub occupied: Bitboard,
+    /// Bitboard of occupied squares of sides.
+    pub sides: [Bitboard; SIDE_NB],
 
     diagonal_mask: [Bitboard; SQUARE_NB],
     anti_diagonal_mask: [Bitboard; SQUARE_NB],
@@ -241,7 +308,7 @@ impl Board {
                             }
                         },
                         PieceType::Knight => {
-                            if ix.abs_diff(jx) + iy.abs_diff(jy) == 3 && (ix != jx || iy != jy) {
+                            if ix.abs_diff(jx) + iy.abs_diff(jy) == 3 && ix != jx && iy != jy {
                                 change_bit!(bb, j);
                             }
                         },
@@ -326,7 +393,11 @@ impl Board {
             }
         }
         Board {
+            side: Side::Black,
             movable_sq,
+            boards: [[0; PIECE_TYPE_NB]; SIDE_NB],
+            occupied: 0,
+            sides: [0, 0],
             diagonal_mask,
             anti_diagonal_mask,
             rank_mask,
@@ -360,6 +431,85 @@ impl Board {
         let occ = afile & (occ >> (sq as usize & 7));
         let occ = occ.wrapping_mul(diagonal_a2_h7) >> 58;
         self.a_file_attacks[occ as usize][sq as usize >> 3] << (sq as usize & 7)
+    }
+
+    pub fn heavy_attacks(&self, side: Side) -> Bitboard {
+        if side == Side::Black {
+            let board = self.boards[Side::Black as usize][PieceType::Heavy as usize] << 8;
+            let board = board & !self.occupied;
+            board << 8
+        } else {
+            let board = self.boards[Side::White as usize][PieceType::Heavy as usize] >> 8;
+            let board = board & !self.occupied;
+            board >> 8
+        }
+    }
+
+    pub fn arrow_attacks(&self, sq: Square) -> Bitboard {
+        self.file_attacks(self.occupied, sq) | self.rank_attacks(self.occupied, sq)
+            | self.diagonal_attacks(self.occupied, sq) | self.anti_diagonal_attacks(self.occupied, sq)
+    }
+
+    pub fn do_move(&mut self, m: Move) {
+        let to = get_to(m);
+        match get_move_type(m) {
+            MoveType::Normal => {
+                let from = get_from(m);
+                let (pt, side) = self.grid[from as usize].split();
+
+                change_bit!(self.occupied, to as usize);
+                change_bit!(self.boards[side as usize][pt as usize], to as usize);
+                self.grid[to as usize] = self.grid[from as usize];
+
+                change_bit!(self.occupied, from as usize);
+                change_bit!(self.boards[side as usize][pt as usize], from as usize);
+                self.grid[from as usize] = Piece::None;
+            },
+            MoveType::Return => {
+                let from = get_from(m);
+                let (pt, side) = self.grid[to as usize].split();
+
+                change_bit!(self.occupied, from as usize);
+                change_bit!(self.boards[side as usize][PieceType::Arrow as usize], from as usize);
+                self.grid[from as usize] = Piece::None;
+
+                if pt == PieceType::Archer0 {
+                    change_bit!(self.boards[side as usize][PieceType::Archer0 as usize], to as usize);
+                    change_bit!(self.boards[side as usize][PieceType::Archer1 as usize], to as usize);
+                    self.grid[to as usize] = PieceType::Archer1.into_piece(side);
+                } else if pt == PieceType::Archer1 {
+                    change_bit!(self.boards[side as usize][PieceType::Archer1 as usize], to as usize);
+                    change_bit!(self.boards[side as usize][PieceType::Archer2 as usize], to as usize);
+                    self.grid[to as usize] = PieceType::Archer2.into_piece(side);
+                }
+            },
+            MoveType::Shoot  => {
+                let from = get_from(m);
+                let (pt, side) = self.grid[from as usize].split();
+
+                if pt == PieceType::Archer1 {
+                    change_bit!(self.boards[side as usize][PieceType::Archer1 as usize], from as usize);
+                    change_bit!(self.boards[side as usize][PieceType::Archer0 as usize], from as usize);
+                    self.grid[from as usize] = PieceType::Archer0.into_piece(side);
+                } else if pt == PieceType::Archer2 {
+                    change_bit!(self.boards[side as usize][PieceType::Archer2 as usize], from as usize);
+                    change_bit!(self.boards[side as usize][PieceType::Archer1 as usize], from as usize);
+                    self.grid[from as usize] = PieceType::Archer1.into_piece(side);
+                }
+
+                change_bit!(self.occupied, to as usize);
+                change_bit!(self.boards[side as usize][PieceType::Arrow as usize], to as usize);
+                self.grid[to as usize] = PieceType::Arrow.into_piece(side);
+            },
+            MoveType::Drop   => {
+                todo!()
+            },
+            MoveType::Supply => {
+                todo!()
+            },
+        }
+
+        self.side = !self.side;
     }
 }
 
@@ -412,7 +562,12 @@ impl FromStr for Board {
                     continue;
                 }
             };
-            board.grid[iy * RANK_NB + ix] = piece;
+            let i = iy * RANK_NB + ix;
+            board.grid[i] = piece;
+            let (pt, side) = piece.split();
+            change_bit!(board.boards[side as usize][pt as usize], i);
+            change_bit!(board.occupied, i);
+            change_bit!(board.sides[side as usize], i);
             ix += 1;
         }
         if ix != RANK_NB || iy != 0 {
@@ -437,7 +592,7 @@ mod tests {
             .  .  .  .  .  .  .  . \n\
             .  .  .  .  .  .  .  . \n\
             L  L  H  H  H  H  L  L \n\
-            A1 K  G  P  K' G  K  A1\
+            A1 N  G  P  K' G  N  A1\
         ";
         assert_eq!(format!("{}", board), answer.to_string());
     }
