@@ -11,6 +11,7 @@ use crate::movegen::{get_from, get_move_type, get_to, Move, MoveType};
 /// Square of the grid.
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[repr(usize)]
+#[rustfmt::skip]
 pub enum Square {
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
@@ -49,6 +50,7 @@ macro_rules! for_pos {
 /// Type of the piece.
 #[derive(FromPrimitive, EnumIter, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[repr(usize)]
+#[rustfmt::skip]
 pub enum PieceType {
     None, Light, Heavy, King1, King2, Prince1, Prince2, General, Knight, Arrow, Archer0, Archer1, Archer2,
 }
@@ -59,19 +61,19 @@ pub const PIECE_TYPE_NB: usize = 13;
 impl fmt::Display for PieceType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            PieceType::None     => write!(f, ". "),
-            PieceType::Light    => write!(f, "L "),
-            PieceType::Heavy    => write!(f, "H "),
-            PieceType::King1    => write!(f, "K "),
-            PieceType::King2    => write!(f, "K'"),
-            PieceType::Prince1  => write!(f, "P "),
-            PieceType::Prince2  => write!(f, "P'"),
-            PieceType::General  => write!(f, "G "),
-            PieceType::Knight   => write!(f, "N "),
-            PieceType::Arrow    => write!(f, "R "),
-            PieceType::Archer0  => write!(f, "A0"),
-            PieceType::Archer1  => write!(f, "A1"),
-            PieceType::Archer2  => write!(f, "A2"),
+            PieceType::None => write!(f, ". "),
+            PieceType::Light => write!(f, "L "),
+            PieceType::Heavy => write!(f, "H "),
+            PieceType::King1 => write!(f, "K "),
+            PieceType::King2 => write!(f, "K'"),
+            PieceType::Prince1 => write!(f, "P "),
+            PieceType::Prince2 => write!(f, "P'"),
+            PieceType::General => write!(f, "G "),
+            PieceType::Knight => write!(f, "N "),
+            PieceType::Arrow => write!(f, "R "),
+            PieceType::Archer0 => write!(f, "A0"),
+            PieceType::Archer1 => write!(f, "A1"),
+            PieceType::Archer2 => write!(f, "A2"),
         }
     }
 }
@@ -79,6 +81,7 @@ impl fmt::Display for PieceType {
 /// Type of the piece with the side.
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[repr(usize)]
+#[rustfmt::skip]
 pub enum Piece {
     None,
     BLight, BHeavy, BKing1, BKing2, BPrince1, BPrince2, BGeneral, BKnight, BArrow, BArcher0, BArcher1, BArcher2,
@@ -92,32 +95,32 @@ pub const PIECE_NB: usize = 29;
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Piece::None     => write!(f, ". "),
-            Piece::BLight   => write!(f, "L "),
-            Piece::BHeavy   => write!(f, "H "),
-            Piece::BKing1   => write!(f, "K "),
-            Piece::BKing2   => write!(f, "K'"),
+            Piece::None => write!(f, ". "),
+            Piece::BLight => write!(f, "L "),
+            Piece::BHeavy => write!(f, "H "),
+            Piece::BKing1 => write!(f, "K "),
+            Piece::BKing2 => write!(f, "K'"),
             Piece::BPrince1 => write!(f, "P "),
             Piece::BPrince2 => write!(f, "P'"),
             Piece::BGeneral => write!(f, "G "),
-            Piece::BKnight  => write!(f, "N "),
-            Piece::BArrow   => write!(f, "R "),
+            Piece::BKnight => write!(f, "N "),
+            Piece::BArrow => write!(f, "R "),
             Piece::BArcher0 => write!(f, "A0"),
             Piece::BArcher1 => write!(f, "A1"),
             Piece::BArcher2 => write!(f, "A2"),
-            Piece::PAD1     => write!(f, "**"),
-            Piece::PAD2     => write!(f, "**"),
-            Piece::PAD3     => write!(f, "**"),
-            Piece::PAD4     => write!(f, "**"),
-            Piece::WLight   => write!(f, "l "),
-            Piece::WHeavy   => write!(f, "h "),
-            Piece::WKing1   => write!(f, "k "),
-            Piece::WKing2   => write!(f, "k'"),
+            Piece::PAD1 => write!(f, "**"),
+            Piece::PAD2 => write!(f, "**"),
+            Piece::PAD3 => write!(f, "**"),
+            Piece::PAD4 => write!(f, "**"),
+            Piece::WLight => write!(f, "l "),
+            Piece::WHeavy => write!(f, "h "),
+            Piece::WKing1 => write!(f, "k "),
+            Piece::WKing2 => write!(f, "k'"),
             Piece::WPrince1 => write!(f, "p "),
             Piece::WPrince2 => write!(f, "p'"),
             Piece::WGeneral => write!(f, "g "),
-            Piece::WKnight  => write!(f, "n "),
-            Piece::WArrow   => write!(f, "r "),
+            Piece::WKnight => write!(f, "n "),
+            Piece::WArrow => write!(f, "r "),
             Piece::WArcher0 => write!(f, "a0"),
             Piece::WArcher1 => write!(f, "a1"),
             Piece::WArcher2 => write!(f, "a2"),
@@ -130,7 +133,8 @@ impl fmt::Display for Piece {
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[repr(usize)]
 pub enum Side {
-    Black, White
+    Black,
+    White,
 }
 
 /// Count of sides.
@@ -160,7 +164,10 @@ impl PieceType {
 impl Piece {
     pub fn split(&self) -> (PieceType, Side) {
         if *self >= Piece::WLight {
-            (PieceType::from_usize(*self as usize - 16).unwrap(), Side::White)
+            (
+                PieceType::from_usize(*self as usize - 16).unwrap(),
+                Side::White,
+            )
         } else {
             (PieceType::from_usize(*self as usize).unwrap(), Side::Black)
         }
@@ -300,42 +307,49 @@ impl Board {
                         PieceType::None => continue,
                         PieceType::Light | PieceType::Heavy => {
                             if ix == jx && iy + 1 == jy
-                                || iy >= 5 && ix.abs_diff(jx) == 1 && iy == jy {
+                                || iy >= 5 && ix.abs_diff(jx) == 1 && iy == jy
+                            {
                                 change_bit!(bb, j);
                             }
-                        },
+                        }
                         PieceType::King1 | PieceType::King2 => {
-                            if ix.abs_diff(jx) <= 1 && iy.abs_diff(jy) <= 1 && !(ix == jx && iy == jy) {
+                            if ix.abs_diff(jx) <= 1
+                                && iy.abs_diff(jy) <= 1
+                                && !(ix == jx && iy == jy)
+                            {
                                 change_bit!(bb, j);
                             }
-                        },
+                        }
                         PieceType::Prince1 | PieceType::Prince2 => {
                             if ix == jx && iy + 1 == jy
-                                || ix.abs_diff(jx) == 1 && iy.abs_diff(jy) == 1 {
+                                || ix.abs_diff(jx) == 1 && iy.abs_diff(jy) == 1
+                            {
                                 change_bit!(bb, j);
                             }
-                        },
+                        }
                         PieceType::General => {
                             if ix.abs_diff(jx) + iy.abs_diff(jy) == 1
-                                || ix.abs_diff(jx) == 1 && iy + 1 == jy {
+                                || ix.abs_diff(jx) == 1 && iy + 1 == jy
+                            {
                                 change_bit!(bb, j);
                             }
-                        },
+                        }
                         PieceType::Knight => {
                             if ix.abs_diff(jx) + iy.abs_diff(jy) == 3 && ix != jx && iy != jy {
                                 change_bit!(bb, j);
                             }
-                        },
+                        }
                         PieceType::Arrow => continue,
                         PieceType::Archer0 | PieceType::Archer1 | PieceType::Archer2 => {
                             if ix.abs_diff(jx) + iy.abs_diff(jy) == 1 {
                                 change_bit!(bb, j);
                             }
-                        },
+                        }
                     }
                 });
                 movable_sq[pt.into_piece(Side::Black) as usize][i] = bb;
-                movable_sq[pt.into_piece(Side::White) as usize][(RANK_NB - 1 - iy) * RANK_NB + ix] = flipped(bb);
+                movable_sq[pt.into_piece(Side::White) as usize]
+                    [(RANK_NB - 1 - iy) * RANK_NB + ix] = flipped(bb);
             });
         }
 
@@ -370,7 +384,7 @@ impl Board {
                     }
                 }
                 // Check right of the square.
-                for i in file+1..RANK_NB {
+                for i in file + 1..RANK_NB {
                     u |= 1 << i;
                     if (occ << 1) & (1 << i) != 0 {
                         break;
@@ -397,7 +411,7 @@ impl Board {
                     }
                 }
                 // Check above the square.
-                for i in rank+1..RANK_NB {
+                for i in rank + 1..RANK_NB {
                     u |= 1 << (i * RANK_NB);
                     if (occ << 1) & (1 << i) != 0 {
                         break;
@@ -416,7 +430,7 @@ impl Board {
             rank_mask,
             fill_up_attacks,
             a_file_attacks,
-            grid: [Piece::None; SQUARE_NB]
+            grid: [Piece::None; SQUARE_NB],
         }
     }
 
@@ -464,7 +478,6 @@ impl Board {
 
     pub fn heavy_attacks(&self, side: Side) -> Bitboard {
         if side == Side::Black {
-            
             let board = self.pieces_pt_side(PieceType::Heavy, Side::Black) << 8;
             let board = board & !self.pieces();
             board << 8
@@ -477,8 +490,10 @@ impl Board {
 
     pub fn arrow_attacks(&self, sq: Square) -> Bitboard {
         let occupied = self.pieces();
-        self.file_attacks(occupied, sq) | self.rank_attacks(occupied, sq)
-            | self.diagonal_attacks(occupied, sq) | self.anti_diagonal_attacks(occupied, sq)
+        self.file_attacks(occupied, sq)
+            | self.rank_attacks(occupied, sq)
+            | self.diagonal_attacks(occupied, sq)
+            | self.anti_diagonal_attacks(occupied, sq)
     }
 
     pub fn do_move(&mut self, m: Move) {
@@ -495,7 +510,7 @@ impl Board {
                 change_bit!(self.boards[pt as usize], from as usize);
                 change_bit!(self.sides[side as usize], from as usize);
                 self.grid[from as usize] = Piece::None;
-            },
+            }
             MoveType::Return => {
                 let from = get_from(m);
                 let (pt, side) = self.grid[to as usize].split();
@@ -513,8 +528,8 @@ impl Board {
                     change_bit!(self.boards[PieceType::Archer2 as usize], to as usize);
                     self.grid[to as usize] = PieceType::Archer2.into_piece(side);
                 }
-            },
-            MoveType::Shoot  => {
+            }
+            MoveType::Shoot => {
                 let from = get_from(m);
                 let (pt, side) = self.grid[from as usize].split();
 
@@ -531,13 +546,13 @@ impl Board {
                 change_bit!(self.sides[side as usize], to as usize);
                 change_bit!(self.boards[PieceType::Arrow as usize], to as usize);
                 self.grid[to as usize] = PieceType::Arrow.into_piece(side);
-            },
-            MoveType::Drop   => {
+            }
+            MoveType::Drop => {
                 todo!()
-            },
+            }
             MoveType::Supply => {
                 todo!()
-            },
+            }
         }
 
         self.side = !self.side;
@@ -555,15 +570,15 @@ impl FromStr for Board {
             let piece = match c {
                 '/' => {
                     if ix != RANK_NB {
-                        return Err("invalid row.".to_string())
+                        return Err("invalid row.".to_string());
                     }
                     ix = 0;
                     iy -= 1;
                     if iy == RANK_NB {
-                        return Err("too many rows.".to_string())
+                        return Err("too many rows.".to_string());
                     }
                     continue;
-                },
+                }
                 'L' => Piece::BLight,
                 'H' => Piece::BHeavy,
                 'K' => Piece::BKing2,
@@ -587,7 +602,7 @@ impl FromStr for Board {
                 c => {
                     let i = c as i32 - 48;
                     if i < 0 || ix + i as usize > RANK_NB {
-                        return Err(format!("invalid char: {}.", c))
+                        return Err(format!("invalid char: {}.", c));
                     }
                     ix += i as usize;
                     continue;
@@ -613,7 +628,9 @@ mod tests {
     use crate::board::Board;
     #[test]
     fn initial_position() {
-        let board: Board = "bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB".parse().unwrap();
+        let board: Board = "bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB"
+            .parse()
+            .unwrap();
         let answer = "\
             a1 n  g  k' p  g  n  a1\n\
             l  l  h  h  h  h  l  l \n\
