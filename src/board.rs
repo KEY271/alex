@@ -165,6 +165,22 @@ impl Piece {
             (PieceType::from_usize(*self as usize).unwrap(), Side::Black)
         }
     }
+
+    pub fn pt(&self) -> PieceType {
+        if *self >= Piece::WLight {
+            PieceType::from_usize(*self as usize - 16).unwrap()
+        } else {
+            PieceType::from_usize(*self as usize).unwrap()
+        }
+    }
+
+    pub fn side(&self) -> Side {
+        if *self >= Piece::WLight {
+            Side::White
+        } else {
+            Side::Black
+        }
+    }
 }
 
 /// Bitboard.
@@ -232,24 +248,22 @@ fn flipped(bb: Bitboard) -> Bitboard {
 pub const OCC_NB: usize = 64;
 
 /// Board.
+#[derive(PartialEq, Eq)]
 pub struct Board {
-    /// Side.
     pub side: Side,
     /// Piece at the square.
     pub grid: [Piece; SQUARE_NB],
+    /// Bitboards of the piece type.
+    boards: [Bitboard; PIECE_TYPE_NB],
+    /// Bitboard of occupied squares of sides.
+    sides: [Bitboard; SIDE_NB],
+
     /// Squares the piece can move to.
     pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
-    /// Bitboards of the piece type with side.
-    pub boards: [[Bitboard; PIECE_TYPE_NB]; SIDE_NB],
-    /// Bitboard of occupied squares.
-    pub occupied: Bitboard,
-    /// Bitboard of occupied squares of sides.
-    pub sides: [Bitboard; SIDE_NB],
-
+    // Kindergarden bitboard.
     diagonal_mask: [Bitboard; SQUARE_NB],
     anti_diagonal_mask: [Bitboard; SQUARE_NB],
     rank_mask: [Bitboard; SQUARE_NB],
-
     fill_up_attacks: [[Bitboard; RANK_NB]; OCC_NB],
     a_file_attacks: [[Bitboard; RANK_NB]; OCC_NB],
 }
@@ -395,8 +409,7 @@ impl Board {
         Board {
             side: Side::Black,
             movable_sq,
-            boards: [[0; PIECE_TYPE_NB]; SIDE_NB],
-            occupied: 0,
+            boards: [0; PIECE_TYPE_NB],
             sides: [0, 0],
             diagonal_mask,
             anti_diagonal_mask,
@@ -405,6 +418,22 @@ impl Board {
             a_file_attacks,
             grid: [Piece::None; SQUARE_NB]
         }
+    }
+
+    pub fn pieces(&self) -> Bitboard {
+        self.sides[Side::Black as usize] | self.sides[Side::White as usize]
+    }
+
+    pub fn pieces_pt(&self, pt: PieceType) -> Bitboard {
+        self.boards[pt as usize]
+    }
+
+    pub fn pieces_side(&self, side: Side) -> Bitboard {
+        self.sides[side as usize]
+    }
+
+    pub fn pieces_pt_side(&self, pt: PieceType, side: Side) -> Bitboard {
+        self.boards[pt as usize] & self.sides[side as usize]
     }
 
     pub fn diagonal_attacks(&self, occ: u64, sq: Square) -> Bitboard {
@@ -435,19 +464,21 @@ impl Board {
 
     pub fn heavy_attacks(&self, side: Side) -> Bitboard {
         if side == Side::Black {
-            let board = self.boards[Side::Black as usize][PieceType::Heavy as usize] << 8;
-            let board = board & !self.occupied;
+            
+            let board = self.pieces_pt_side(PieceType::Heavy, Side::Black) << 8;
+            let board = board & !self.pieces();
             board << 8
         } else {
-            let board = self.boards[Side::White as usize][PieceType::Heavy as usize] >> 8;
-            let board = board & !self.occupied;
+            let board = self.pieces_pt_side(PieceType::Heavy, Side::White) >> 8;
+            let board = board & !self.pieces();
             board >> 8
         }
     }
 
     pub fn arrow_attacks(&self, sq: Square) -> Bitboard {
-        self.file_attacks(self.occupied, sq) | self.rank_attacks(self.occupied, sq)
-            | self.diagonal_attacks(self.occupied, sq) | self.anti_diagonal_attacks(self.occupied, sq)
+        let occupied = self.pieces();
+        self.file_attacks(occupied, sq) | self.rank_attacks(occupied, sq)
+            | self.diagonal_attacks(occupied, sq) | self.anti_diagonal_attacks(occupied, sq)
     }
 
     pub fn do_move(&mut self, m: Move) {
@@ -457,29 +488,29 @@ impl Board {
                 let from = get_from(m);
                 let (pt, side) = self.grid[from as usize].split();
 
-                change_bit!(self.occupied, to as usize);
-                change_bit!(self.boards[side as usize][pt as usize], to as usize);
+                change_bit!(self.boards[pt as usize], to as usize);
+                change_bit!(self.sides[side as usize], to as usize);
                 self.grid[to as usize] = self.grid[from as usize];
 
-                change_bit!(self.occupied, from as usize);
-                change_bit!(self.boards[side as usize][pt as usize], from as usize);
+                change_bit!(self.boards[pt as usize], from as usize);
+                change_bit!(self.sides[side as usize], from as usize);
                 self.grid[from as usize] = Piece::None;
             },
             MoveType::Return => {
                 let from = get_from(m);
                 let (pt, side) = self.grid[to as usize].split();
 
-                change_bit!(self.occupied, from as usize);
-                change_bit!(self.boards[side as usize][PieceType::Arrow as usize], from as usize);
+                change_bit!(self.boards[PieceType::Arrow as usize], from as usize);
+                change_bit!(self.sides[side as usize], from as usize);
                 self.grid[from as usize] = Piece::None;
 
                 if pt == PieceType::Archer0 {
-                    change_bit!(self.boards[side as usize][PieceType::Archer0 as usize], to as usize);
-                    change_bit!(self.boards[side as usize][PieceType::Archer1 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer0 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
                     self.grid[to as usize] = PieceType::Archer1.into_piece(side);
                 } else if pt == PieceType::Archer1 {
-                    change_bit!(self.boards[side as usize][PieceType::Archer1 as usize], to as usize);
-                    change_bit!(self.boards[side as usize][PieceType::Archer2 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer2 as usize], to as usize);
                     self.grid[to as usize] = PieceType::Archer2.into_piece(side);
                 }
             },
@@ -488,17 +519,17 @@ impl Board {
                 let (pt, side) = self.grid[from as usize].split();
 
                 if pt == PieceType::Archer1 {
-                    change_bit!(self.boards[side as usize][PieceType::Archer1 as usize], from as usize);
-                    change_bit!(self.boards[side as usize][PieceType::Archer0 as usize], from as usize);
+                    change_bit!(self.boards[PieceType::Archer1 as usize], from as usize);
+                    change_bit!(self.boards[PieceType::Archer0 as usize], from as usize);
                     self.grid[from as usize] = PieceType::Archer0.into_piece(side);
                 } else if pt == PieceType::Archer2 {
-                    change_bit!(self.boards[side as usize][PieceType::Archer2 as usize], from as usize);
-                    change_bit!(self.boards[side as usize][PieceType::Archer1 as usize], from as usize);
+                    change_bit!(self.boards[PieceType::Archer2 as usize], from as usize);
+                    change_bit!(self.boards[PieceType::Archer1 as usize], from as usize);
                     self.grid[from as usize] = PieceType::Archer1.into_piece(side);
                 }
 
-                change_bit!(self.occupied, to as usize);
-                change_bit!(self.boards[side as usize][PieceType::Arrow as usize], to as usize);
+                change_bit!(self.sides[side as usize], to as usize);
+                change_bit!(self.boards[PieceType::Arrow as usize], to as usize);
                 self.grid[to as usize] = PieceType::Arrow.into_piece(side);
             },
             MoveType::Drop   => {
@@ -565,8 +596,7 @@ impl FromStr for Board {
             let i = iy * RANK_NB + ix;
             board.grid[i] = piece;
             let (pt, side) = piece.split();
-            change_bit!(board.boards[side as usize][pt as usize], i);
-            change_bit!(board.occupied, i);
+            change_bit!(board.boards[pt as usize], i);
             change_bit!(board.sides[side as usize], i);
             ix += 1;
         }

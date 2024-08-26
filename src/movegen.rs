@@ -111,7 +111,7 @@ fn generate_move_normal(board: &Board, moves: &mut Vec<Move>, target: Bitboard) 
         if pt == PieceType::None {
             continue;
         }
-        foreach_bb!(board.boards[board.side as usize][pt as usize], sq, {
+        foreach_bb!(board.pieces_pt_side(pt, board.side), sq, {
             let movable_sq = board.movable_sq[pt.into_piece(board.side) as usize][sq as usize];
             foreach_bb!(movable_sq & target, sq2, {
                 moves.push(make_move_normal(board.grid[sq2 as usize].split().0, sq, sq2));
@@ -120,14 +120,14 @@ fn generate_move_normal(board: &Board, moves: &mut Vec<Move>, target: Bitboard) 
     }
     foreach_bb!(board.heavy_attacks(board.side) & target, sq, {
         let from = if board.side == Side::Black { sq as usize - 16 } else { sq as usize + 16 };
-        moves.push(make_move_normal(board.grid[sq as usize].split().0, Square::from_usize(from).unwrap(), sq));
+        moves.push(make_move_normal(board.grid[sq as usize].pt(), Square::from_usize(from).unwrap(), sq));
     });
 }
 
 /// Generates shoot moves.
 fn generate_move_shoot(board: &Board, moves: &mut Vec<Move>, target: Bitboard) {
-    let bb = board.boards[board.side as usize][PieceType::Archer1 as usize]
-        | board.boards[board.side as usize][PieceType::Archer2 as usize];
+    let bb = board.pieces_pt_side(PieceType::Archer1, board.side)
+        | board.pieces_pt_side(PieceType::Archer2, board.side);
     foreach_bb!(bb, sq, {
         foreach_bb!(board.arrow_attacks(sq) & target, sq2, {
             moves.push(make_move_shoot(board.grid[sq2 as usize].split().0, sq, sq2));
@@ -137,9 +137,9 @@ fn generate_move_shoot(board: &Board, moves: &mut Vec<Move>, target: Bitboard) {
 
 /// Generates return moves.
 fn generate_move_return(board: &Board, moves: &mut Vec<Move>) {
-    let bb = board.boards[board.side as usize][PieceType::Archer0 as usize]
-        | board.boards[board.side as usize][PieceType::Archer1 as usize];
-    foreach_bb!(board.boards[board.side as usize][PieceType::Arrow as usize], sq, {
+    let bb = board.pieces_pt_side(PieceType::Archer0, board.side)
+        | board.pieces_pt_side(PieceType::Archer1, board.side);
+    foreach_bb!(board.pieces_pt_side(PieceType::Arrow, board.side), sq, {
         foreach_bb!(board.arrow_attacks(sq) & bb, sq2, {
             moves.push(make_move_return(sq, sq2));
         });
@@ -148,7 +148,7 @@ fn generate_move_return(board: &Board, moves: &mut Vec<Move>) {
 
 /// Generates moves without capturing.
 fn generate_non_captures(board: &Board, moves: &mut Vec<Move>) {
-    let target = !board.occupied;
+    let target = !board.pieces();
     generate_move_normal(board, moves, target);
     generate_move_shoot(board, moves, target);
     generate_move_return(board, moves);
@@ -156,7 +156,7 @@ fn generate_non_captures(board: &Board, moves: &mut Vec<Move>) {
 
 /// Generates moves with capturing.
 fn generate_captures(board: &Board, moves: &mut Vec<Move>) {
-    let target = !board.sides[board.side as usize] & board.sides[!board.side as usize];
+    let target = !board.pieces_side(board.side) & board.pieces_side(!board.side);
     generate_move_normal(board, moves, target);
     generate_move_shoot(board, moves, target);
 }
