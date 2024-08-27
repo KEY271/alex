@@ -6,7 +6,7 @@ use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::movegen::{get_from, get_move_type, get_to, Move, MoveType};
+use crate::movegen::{get_from, get_move_type, get_pt, get_to, Move, MoveType};
 
 /// Square of the grid.
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -190,6 +190,21 @@ impl Piece {
     }
 }
 
+/// Hand.
+pub type Hand = u32;
+const HAND_LIGHT_CAP: u32 = 0b000000000000000000001111;
+const HAND_LIGHT_SHIFT: u32 = 0;
+const HAND_HEAVY_CAP: u32 = 0b000000000000000011110000;
+const HAND_HEAVY_SHIFT: u32 = 4;
+const HAND_GENERAL_CAP: u32 = 0b000000000000111100000000;
+const HAND_GENERAL_SHIFT: u32 = 8;
+const HAND_KNIGHT_CAP: u32 = 0b000000001111000000000000;
+const HAND_KNIGHT_SHIFT: u32 = 12;
+const HAND_ARROW_CAP: u32 = 0b000011110000000000000000;
+const HAND_ARROW_SHIFT: u32 = 16;
+const HAND_ARCHER_CAP: u32 = 0b111100000000000000000000;
+const HAND_ARCHER_SHIFT: u32 = 20;
+
 /// Bitboard.
 pub type Bitboard = u64;
 
@@ -264,6 +279,8 @@ pub struct Board {
     boards: [Bitboard; PIECE_TYPE_NB],
     /// Bitboard of occupied squares of sides.
     sides: [Bitboard; SIDE_NB],
+    /// Hands of sides.
+    hands: [Hand; SIDE_NB],
 
     /// Squares the piece can move to.
     pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
@@ -425,6 +442,7 @@ impl Board {
             movable_sq,
             boards: [0; PIECE_TYPE_NB],
             sides: [0, 0],
+            hands: [0, 0],
             diagonal_mask,
             anti_diagonal_mask,
             rank_mask,
@@ -496,12 +514,57 @@ impl Board {
             | self.anti_diagonal_attacks(occupied, sq)
     }
 
+    pub fn count_hand(&self, side: Side, pt: PieceType) -> u32 {
+        let hand = self.hands[side as usize];
+        match pt {
+            PieceType::Light => (hand & HAND_LIGHT_CAP) >> HAND_LIGHT_SHIFT,
+            PieceType::Heavy => (hand & HAND_HEAVY_CAP) >> HAND_HEAVY_SHIFT,
+            PieceType::General => (hand & HAND_GENERAL_CAP) >> HAND_GENERAL_SHIFT,
+            PieceType::Knight => (hand & HAND_KNIGHT_CAP) >> HAND_KNIGHT_SHIFT,
+            PieceType::Arrow => (hand & HAND_ARROW_CAP) >> HAND_ARROW_SHIFT,
+            PieceType::Archer0 => (hand & HAND_ARCHER_CAP) >> HAND_ARCHER_SHIFT,
+            _ => panic!(),
+        }
+    }
+
+    pub fn add_hand(&mut self, side: Side, pt: PieceType) {
+        self.hands[side as usize] += match pt {
+            PieceType::Light => 1 << HAND_LIGHT_SHIFT,
+            PieceType::Heavy => 1 << HAND_HEAVY_SHIFT,
+            PieceType::General => 1 << HAND_GENERAL_SHIFT,
+            PieceType::Knight => 1 << HAND_KNIGHT_SHIFT,
+            PieceType::Arrow => 1 << HAND_ARROW_SHIFT,
+            PieceType::Archer0 => 1 << HAND_ARCHER_SHIFT,
+            PieceType::Archer1 => 1 << HAND_ARCHER_SHIFT + 1 << HAND_ARROW_SHIFT,
+            PieceType::Archer2 => 1 << HAND_ARCHER_SHIFT + 2 << HAND_ARROW_SHIFT,
+            _ => panic!(),
+        };
+    }
+
+    pub fn remove_hand(&mut self, side: Side, pt: PieceType) {
+        self.hands[side as usize] -= match pt {
+            PieceType::Light => 1 << HAND_LIGHT_SHIFT,
+            PieceType::Heavy => 1 << HAND_HEAVY_SHIFT,
+            PieceType::General => 1 << HAND_GENERAL_SHIFT,
+            PieceType::Knight => 1 << HAND_KNIGHT_SHIFT,
+            PieceType::Arrow => 1 << HAND_ARROW_SHIFT,
+            PieceType::Archer0 => 1 << HAND_ARCHER_SHIFT,
+            PieceType::Archer1 => 1 << HAND_ARCHER_SHIFT + 1 << HAND_ARROW_SHIFT,
+            PieceType::Archer2 => 1 << HAND_ARCHER_SHIFT + 2 << HAND_ARROW_SHIFT,
+            _ => panic!(),
+        };
+    }
+
     pub fn do_move(&mut self, m: Move) {
         let to = get_to(m);
         match get_move_type(m) {
             MoveType::Normal => {
                 let from = get_from(m);
                 let (pt, side) = self.grid[from as usize].split();
+                let pt2 = self.grid[to as usize].pt();
+                if pt2 != PieceType::None {
+                    self.add_hand(side, pt2);
+                }
 
                 change_bit!(self.boards[pt as usize], to as usize);
                 change_bit!(self.sides[side as usize], to as usize);
@@ -532,6 +595,10 @@ impl Board {
             MoveType::Shoot => {
                 let from = get_from(m);
                 let (pt, side) = self.grid[from as usize].split();
+                let pt2 = self.grid[to as usize].pt();
+                if pt2 != PieceType::None {
+                    self.add_hand(side, pt2);
+                }
 
                 if pt == PieceType::Archer1 {
                     change_bit!(self.boards[PieceType::Archer1 as usize], from as usize);
@@ -548,10 +615,24 @@ impl Board {
                 self.grid[to as usize] = PieceType::Arrow.into_piece(side);
             }
             MoveType::Drop => {
-                todo!()
+                let pt = get_pt(m);
+                self.remove_hand(self.side, pt);
+                change_bit!(self.sides[self.side as usize], to as usize);
+                change_bit!(self.boards[pt as usize], to as usize);
+                self.grid[to as usize] = pt.into_piece(self.side);
             }
             MoveType::Supply => {
-                todo!()
+                self.remove_hand(self.side, PieceType::Arrow);
+                let pt = self.grid[to as usize].pt();
+                if pt == PieceType::Archer0 {
+                    change_bit!(self.boards[PieceType::Archer0 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
+                    self.grid[to as usize] = PieceType::Archer1.into_piece(self.side);
+                } else if pt == PieceType::Archer1 {
+                    change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer2 as usize], to as usize);
+                    self.grid[to as usize] = PieceType::Archer2.into_piece(self.side);
+                }
             }
         }
 

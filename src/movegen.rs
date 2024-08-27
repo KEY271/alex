@@ -59,6 +59,10 @@ pub fn get_from(m: Move) -> Square {
     Square::from_u32((m & MOVE_FROM) >> MOVE_FROM_SHIFT).unwrap()
 }
 
+pub fn get_pt(m: Move) -> PieceType {
+    PieceType::from_u32((m & MOVE_FROM) >> MOVE_FROM_SHIFT).unwrap()
+}
+
 pub fn get_to(m: Move) -> Square {
     Square::from_u32((m & MOVE_TO) >> MOVE_TO_SHIFT).unwrap()
 }
@@ -160,12 +164,67 @@ fn generate_move_return(board: &Board, moves: &mut Vec<Move>) {
     });
 }
 
+/// Generates drop moves.
+fn generate_move_drop(board: &Board, moves: &mut Vec<Move>) {
+    let mask = if board.side == Side::Black {
+        0x000000FFFFFFFFFF
+    } else {
+        0xFFFFFFFFFF000000
+    };
+    let bb = !board.pieces() & mask;
+
+    if board.count_hand(board.side, PieceType::Light) != 0 {
+        foreach_bb!(bb, sq, { moves.push(make_move_drop(PieceType::Light, sq)) });
+    }
+    if board.count_hand(board.side, PieceType::Heavy) != 0 {
+        foreach_bb!(bb, sq, { moves.push(make_move_drop(PieceType::Heavy, sq)) });
+    }
+    if board.count_hand(board.side, PieceType::General) != 0 {
+        foreach_bb!(bb, sq, {
+            moves.push(make_move_drop(PieceType::General, sq))
+        });
+    }
+    if board.count_hand(board.side, PieceType::Knight) != 0 {
+        foreach_bb!(bb, sq, {
+            moves.push(make_move_drop(PieceType::Knight, sq))
+        });
+    }
+    let arrow = board.count_hand(board.side, PieceType::Arrow);
+    if arrow != 0 {
+        foreach_bb!(bb, sq, { moves.push(make_move_drop(PieceType::Arrow, sq)) });
+    }
+    if board.count_hand(board.side, PieceType::Archer0) != 0 {
+        foreach_bb!(bb, sq, {
+            moves.push(make_move_drop(PieceType::Archer0, sq));
+            if arrow >= 1 {
+                moves.push(make_move_drop(PieceType::Archer1, sq));
+            }
+            if arrow >= 2 {
+                moves.push(make_move_drop(PieceType::Archer2, sq));
+            }
+        });
+    }
+}
+
+/// Generates supply.
+fn generate_move_supply(board: &Board, moves: &mut Vec<Move>) {
+    if board.count_hand(board.side, PieceType::Arrow) != 0 {
+        let bb = board.pieces_pt_side(PieceType::Archer0, board.side)
+            | board.pieces_pt_side(PieceType::Archer1, board.side);
+        foreach_bb!(bb, sq, {
+            moves.push(make_move_supply(sq));
+        });
+    }
+}
+
 /// Generates moves without capturing.
 fn generate_non_captures(board: &Board, moves: &mut Vec<Move>) {
     let target = !board.pieces();
     generate_move_normal(board, moves, target);
     generate_move_shoot(board, moves, target);
     generate_move_return(board, moves);
+    generate_move_drop(board, moves);
+    generate_move_supply(board, moves);
 }
 
 /// Generates moves with capturing.
