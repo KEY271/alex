@@ -4,6 +4,10 @@ dev:
     #!/bin/bash
     cd client
     npm run dev
+mock:
+    #!/bin/bash
+    cd client
+    npm run json-server
 build:
     #!/bin/bash
     cd client
