@@ -8,3 +8,7 @@ test:
     #!/bin/bash
     cd server
     cargo test
+fmt:
+    #!/bin/bash
+    cd server
+    cargo fmt

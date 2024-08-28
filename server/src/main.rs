@@ -1,20 +1,17 @@
-use std::str::FromStr;
+use axum::{response::Html, routing::get, Router};
 
-extern crate num_derive;
+#[tokio::main]
+async fn main() {
+    let app = Router::new().route("/", get(handler));
 
-extern crate strum;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+        .await
+        .unwrap();
 
-mod board;
-mod movegen;
+    println!("Server: http://localhost:3000");
+    axum::serve(listener, app).await.unwrap();
+}
 
-fn main() {
-    let board = board::Board::from_str("bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB").unwrap();
-    println!("{}\n", board);
-
-    let mut moves = Vec::new();
-    movegen::generate(&board, movegen::GenType::NonCaptures, &mut moves);
-    moves.sort();
-    for m in &moves {
-        println!("{}", movegen::pretty_move(*m));
-    }
+async fn handler() -> Html<&'static str> {
+    Html("<h1>Hello, world!</h1>")
 }
