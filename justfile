@@ -4,6 +4,13 @@ dev:
     #!/bin/bash
     cd client
     npm run dev
+build:
+    #!/bin/bash
+    cd client
+    npm run build
+    cd ..
+    mkdir ./server/static
+    cp -r ./client/dist/* ./server/static
 run:
     #!/bin/bash
     cd server
@@ -16,7 +23,5 @@ fmt:
     #!/bin/bash
     cd server
     cargo fmt
-pretty:
-    #!/bin/bash
-    cd client
+    cd ../client
     npx prettier . --write
