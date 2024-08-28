@@ -1,5 +1,9 @@
 default:
     @just --list
+dev:
+    #!/bin/bash
+    cd client
+    npm run dev
 run:
     #!/bin/bash
     cd server
@@ -12,3 +16,7 @@ fmt:
     #!/bin/bash
     cd server
     cargo fmt
+pretty:
+    #!/bin/bash
+    cd client
+    npx prettier . --write
