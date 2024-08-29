@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Position, Side } from "../utils/game";
 
 type BoardProps = {
@@ -7,19 +8,32 @@ type BoardProps = {
 function Board(props: BoardProps) {
     const { position } = props;
 
+    const [selected, setSelected] = useState(-1);
+
     const board = Array(64)
         .fill(0)
         .map((_, i) => {
             const iy = Math.floor((63 - i) / 8);
             const ix = i % 8;
+            const j = iy * 8 + ix;
             const [name, side] = position.piece(ix, iy);
+            const onClick = () => {
+                if (side == Side.None) {
+                    setSelected(-1);
+                } else {
+                    setSelected(j);
+                }
+            };
             return (
-                <div key={i} className="box-border border-b-2 border-r-2 border-black bg-[bisque]">
+                <div key={j} className="box-border border-b-2 border-r-2 border-black bg-[bisque]">
                     <div
+                        onClick={onClick}
                         data-rev={side == Side.White}
                         data-piece={side != Side.None}
-                        className="flex h-full w-full items-center justify-center text-[20px] data-[rev=true]:rotate-180
-                            data-[piece=true]:cursor-pointer sm:text-[30px]">
+                        data-selected={selected == j}
+                        className="flex h-full w-full select-none items-center justify-center border-red-500 text-[20px]
+                            data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
+                            sm:text-[30px]">
                         {name}
                     </div>
                 </div>
@@ -27,7 +41,7 @@ function Board(props: BoardProps) {
         });
     const file = [..."ABCDEFGH"].map((v, i) => {
         return (
-            <div key={i} className="flex h-[20px] w-[40px] items-center justify-center sm:w-[60px]">
+            <div key={i} className="flex h-[20px] w-[40px] select-none items-center justify-center sm:w-[60px]">
                 {v}
             </div>
         );
@@ -36,7 +50,7 @@ function Board(props: BoardProps) {
         .fill(0)
         .map((_, i) => {
             return (
-                <div key={i} className="flex h-[40px] w-[20px] items-center justify-center sm:h-[60px]">
+                <div key={i} className="flex h-[40px] w-[20px] select-none items-center justify-center sm:h-[60px]">
                     {i + 1}
                 </div>
             );
