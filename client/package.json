@@ -4,7 +4,7 @@
     "version": "0.0.0",
     "type": "module",
     "scripts": {
-        "dev": "vite",
+        "dev": "vite --host=127.0.0.1",
         "build": "tsc -b && vite build",
         "lint": "eslint .",
         "preview": "vite preview",
@@ -24,7 +24,6 @@
         "eslint-plugin-react-hooks": "^5.1.0-rc.0",
         "eslint-plugin-react-refresh": "^0.4.9",
         "globals": "^15.9.0",
-        "json-server": "^1.0.0-beta.2",
         "postcss": "^8.4.41",
         "prettier": "^3.3.3",
         "prettier-plugin-classnames": "^0.7.2",

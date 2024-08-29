@@ -149,7 +149,7 @@ export class Position {
             if (y < 0 || 8 <= y) return false;
             const side2 = this.board[y * 8 + x][1];
             return side2 == Side.None;
-        }
+        };
         const canMove = (x: number, y: number) => {
             if (x < 0 || 8 <= x) return false;
             if (y < 0 || 8 <= y) return false;
@@ -158,7 +158,7 @@ export class Position {
         };
         const pushPossible = (x: number, y: number) => {
             if (canMove(x, y)) movables.push(index(x, y));
-        }
+        };
         const index = (x: number, y: number) => y * 8 + x;
         if (side == Side.None) {
             return movables;
@@ -169,7 +169,7 @@ export class Position {
                 break;
             case PieceType.Light:
                 pushPossible(ix, iy + dir);
-                if (side == Side.Black && iy <= 4 || side == Side.White && iy >= 3) {
+                if ((side == Side.Black && iy <= 4) || (side == Side.White && iy >= 3)) {
                     pushPossible(ix + 1, iy);
                     pushPossible(ix - 1, iy);
                 }
@@ -179,7 +179,7 @@ export class Position {
                 if (isNone(ix, iy + dir)) {
                     pushPossible(ix, iy + dir * 2);
                 }
-                if (side == Side.Black && iy <= 4 || side == Side.White && iy >= 3) {
+                if ((side == Side.Black && iy <= 4) || (side == Side.White && iy >= 3)) {
                     pushPossible(ix + 1, iy);
                     pushPossible(ix - 1, iy);
                 }

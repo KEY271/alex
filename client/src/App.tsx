@@ -5,7 +5,7 @@ import { Position } from "./utils/game";
 function App() {
     const [board, setBoard] = useState(new Position());
     useEffect(() => {
-        fetch("http://127.0.0.1:3001/board", { method: "GET" })
+        fetch("http://127.0.0.1:3001/api/board", { method: "GET" })
             .then((res) => res.text())
             .then((data) => {
                 const position = new Position();

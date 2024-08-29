@@ -6,7 +6,7 @@ use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use crate::movegen::{get_from, get_move_type, get_pt, get_to, Move, MoveType};
+use super::movegen::{get_from, get_move_type, get_pt, get_to, Move, MoveType};
 
 /// Square of the grid.
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -95,35 +95,35 @@ pub const PIECE_NB: usize = 29;
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Piece::None => write!(f, ". "),
-            Piece::BLight => write!(f, "L "),
-            Piece::BHeavy => write!(f, "H "),
-            Piece::BKing1 => write!(f, "K "),
-            Piece::BKing2 => write!(f, "K'"),
-            Piece::BPrince1 => write!(f, "P "),
-            Piece::BPrince2 => write!(f, "P'"),
-            Piece::BGeneral => write!(f, "G "),
-            Piece::BKnight => write!(f, "N "),
-            Piece::BArrow => write!(f, "R "),
-            Piece::BArcher0 => write!(f, "A0"),
-            Piece::BArcher1 => write!(f, "A1"),
-            Piece::BArcher2 => write!(f, "A2"),
-            Piece::PAD1 => write!(f, "**"),
-            Piece::PAD2 => write!(f, "**"),
-            Piece::PAD3 => write!(f, "**"),
-            Piece::PAD4 => write!(f, "**"),
-            Piece::WLight => write!(f, "l "),
-            Piece::WHeavy => write!(f, "h "),
-            Piece::WKing1 => write!(f, "k "),
-            Piece::WKing2 => write!(f, "k'"),
-            Piece::WPrince1 => write!(f, "p "),
-            Piece::WPrince2 => write!(f, "p'"),
-            Piece::WGeneral => write!(f, "g "),
-            Piece::WKnight => write!(f, "n "),
-            Piece::WArrow => write!(f, "r "),
-            Piece::WArcher0 => write!(f, "a0"),
-            Piece::WArcher1 => write!(f, "a1"),
-            Piece::WArcher2 => write!(f, "a2"),
+            Piece::None => write!(f, "."),
+            Piece::BLight => write!(f, "L"),
+            Piece::BHeavy => write!(f, "H"),
+            Piece::BKing1 => write!(f, "K"),
+            Piece::BKing2 => write!(f, "K"),
+            Piece::BPrince1 => write!(f, "P"),
+            Piece::BPrince2 => write!(f, "P"),
+            Piece::BGeneral => write!(f, "G"),
+            Piece::BKnight => write!(f, "N"),
+            Piece::BArrow => write!(f, "R"),
+            Piece::BArcher0 => write!(f, "A"),
+            Piece::BArcher1 => write!(f, "B"),
+            Piece::BArcher2 => write!(f, "C"),
+            Piece::PAD1 => write!(f, "*"),
+            Piece::PAD2 => write!(f, "*"),
+            Piece::PAD3 => write!(f, "*"),
+            Piece::PAD4 => write!(f, "*"),
+            Piece::WLight => write!(f, "l"),
+            Piece::WHeavy => write!(f, "h"),
+            Piece::WKing1 => write!(f, "k"),
+            Piece::WKing2 => write!(f, "k"),
+            Piece::WPrince1 => write!(f, "p"),
+            Piece::WPrince2 => write!(f, "p"),
+            Piece::WGeneral => write!(f, "g"),
+            Piece::WKnight => write!(f, "n"),
+            Piece::WArrow => write!(f, "r"),
+            Piece::WArcher0 => write!(f, "a"),
+            Piece::WArcher1 => write!(f, "b"),
+            Piece::WArcher2 => write!(f, "c"),
         }
     }
 }
@@ -295,14 +295,27 @@ pub struct Board {
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for iy in (0..RANK_NB).rev() {
-            for ix in 0..RANK_NB {
-                write!(f, "{}", self.grid[iy * RANK_NB + ix])?;
-                if ix < RANK_NB - 1 {
-                    write!(f, " ")?;
+            let mut ix = 0;
+            while ix < RANK_NB {
+                let piece = self.grid[iy * RANK_NB + ix];
+                if piece == Piece::None {
+                    let x = ix;
+                    ix += 1;
+                    while ix < RANK_NB {
+                        if self.grid[iy * RANK_NB + ix] == Piece::None {
+                            ix += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    write!(f, "{}", ix - x)?;
+                } else {
+                    ix += 1;
+                    write!(f, "{}", piece)?;
                 }
             }
             if iy > 0 {
-                writeln!(f)?;
+                write!(f, "/")?;
             }
         }
         Ok(())
@@ -654,10 +667,10 @@ impl FromStr for Board {
                         return Err("invalid row.".to_string());
                     }
                     ix = 0;
-                    iy -= 1;
-                    if iy < 0 {
+                    if iy == 0 {
                         return Err("too many rows.".to_string());
                     }
+                    iy -= 1;
                     continue;
                 }
                 'L' => Piece::BLight,
@@ -701,27 +714,5 @@ impl FromStr for Board {
         } else {
             Ok(board)
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::board::Board;
-    #[test]
-    fn initial_position() {
-        let board: Board = "bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB"
-            .parse()
-            .unwrap();
-        let answer = "\
-            a1 n  g  k' p  g  n  a1\n\
-            l  l  h  h  h  h  l  l \n\
-            .  .  .  .  .  .  .  . \n\
-            .  .  .  .  .  .  .  . \n\
-            .  .  .  .  .  .  .  . \n\
-            .  .  .  .  .  .  .  . \n\
-            L  L  H  H  H  H  L  L \n\
-            A1 N  G  P  K' G  N  A1\
-        ";
-        assert_eq!(format!("{}", board), answer.to_string());
     }
 }

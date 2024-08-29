@@ -45,7 +45,7 @@ function Board(props: BoardProps) {
                         data-movable={state.movables.includes(j)}
                         className="flex h-full w-full select-none items-center justify-center border-red-500 text-[20px]
                             data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
-                            sm:text-[30px] data-[movable=true]:bg-[darksalmon]">
+                            data-[movable=true]:bg-[darksalmon] sm:text-[30px]">
                         {name}
                     </div>
                 </div>

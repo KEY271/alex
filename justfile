@@ -4,10 +4,10 @@ dev:
     #!/bin/bash
     cd client
     npm run dev
-mock:
+server:
     #!/bin/bash
-    cd client
-    npm run json-server
+    cd server
+    cargo watch -x "run -- --server-only"
 build:
     #!/bin/bash
     cd client

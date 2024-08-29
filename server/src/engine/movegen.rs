@@ -2,10 +2,9 @@ use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 
-use crate::{
-    board::{get_pos, Bitboard, Board, PieceType, Side, Square},
-    foreach_bb,
-};
+use crate::foreach_bb;
+
+use super::board::{get_pos, Bitboard, Board, PieceType, Side, Square};
 
 /// Move.
 pub type Move = u32;
@@ -245,8 +244,8 @@ pub fn generate(board: &Board, gen: GenType, moves: &mut Vec<Move>) {
 #[cfg(test)]
 mod tests {
     use crate::{
-        board::{Board, PieceType, Square},
-        movegen::{make_move_normal, pretty_move},
+        engine::board::{Board, PieceType, Square},
+        engine::movegen::{make_move_normal, pretty_move},
     };
 
     use super::{generate, GenType};
