@@ -1,13 +1,31 @@
-function Board() {
+import { Position, Side } from "../utils/game";
+
+type BoardProps = {
+    position: Position;
+};
+
+function Board(props: BoardProps) {
+    const { position } = props;
+
     const board = Array(64)
         .fill(0)
         .map((_, i) => {
+            const iy = Math.floor((63 - i) / 8);
+            const ix = i % 8;
+            const [name, side] = position.piece(ix, iy);
             return (
-                <div key={i} className="border-b-2 border-r-2 border-black bg-[bisque] box-border">
+                <div key={i} className="box-border border-b-2 border-r-2 border-black bg-[bisque]">
+                    <div
+                        data-rev={side == Side.White}
+                        data-piece={side != Side.None}
+                        className="flex h-full w-full items-center justify-center text-[20px] data-[rev=true]:rotate-180
+                            data-[piece=true]:cursor-pointer sm:text-[30px]">
+                        {name}
+                    </div>
                 </div>
             );
         });
-    const file = [..."abcdefgh"].map((v, i) => {
+    const file = [..."ABCDEFGH"].map((v, i) => {
         return (
             <div key={i} className="flex h-[20px] w-[40px] items-center justify-center sm:w-[60px]">
                 {v}
@@ -29,8 +47,9 @@ function Board() {
                 className="grid grid-cols-[20px_320px_20px] grid-rows-[20px_320px_20px] sm:grid-cols-[20px_480px_20px]
                     sm:grid-rows-[20px_480px_20px]">
                 <div
-                    className="col-[2] row-[2] grid grid-cols-[repeat(8,40px)] grid-rows-[repeat(8,40px)] border-l-2
-                        border-t-2 w-[322px] sm:w-[482px] h-[322px] sm:h-[482px] border-black sm:grid-cols-[repeat(8,60px)] sm:grid-rows-[repeat(8,60px)] box-border">
+                    className="col-[2] row-[2] box-border grid h-[322px] w-[322px] grid-cols-[repeat(8,40px)]
+                        grid-rows-[repeat(8,40px)] border-l-2 border-t-2 border-black sm:h-[482px] sm:w-[482px]
+                        sm:grid-cols-[repeat(8,60px)] sm:grid-rows-[repeat(8,60px)]">
                     {board}
                 </div>
                 <div className="col-[2] row-[3] flex flex-row">{file}</div>

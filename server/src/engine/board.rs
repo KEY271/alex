@@ -655,7 +655,7 @@ impl FromStr for Board {
                     }
                     ix = 0;
                     iy -= 1;
-                    if iy == RANK_NB {
+                    if iy < 0 {
                         return Err("too many rows.".to_string());
                     }
                     continue;

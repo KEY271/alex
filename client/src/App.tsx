@@ -1,20 +1,23 @@
 import { useEffect, useState } from "react";
 import Board from "./components/Board";
+import { Position } from "./utils/game";
 
 function App() {
-    const [text, setText] = useState("");
+    const [board, setBoard] = useState(new Position());
     useEffect(() => {
-        fetch("http://127.0.0.1:3001/text", { method: "GET" })
+        fetch("http://127.0.0.1:3001/board", { method: "GET" })
             .then((res) => res.text())
             .then((data) => {
-                setText(data);
+                const position = new Position();
+                position.load(data);
+                setBoard(position);
             });
     }, []);
 
     return (
         <>
-            <div className="flex justify-center items-center h-full">
-                <Board />
+            <div className="flex h-full items-center justify-center">
+                <Board position={board} />
             </div>
         </>
     );
