@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Board from "./components/Board";
 
 function App() {
     const [text, setText] = useState("");
@@ -12,7 +13,9 @@ function App() {
 
     return (
         <>
-            <p className="border">{text}</p>
+            <div className="flex justify-center items-center h-full">
+                <Board />
+            </div>
         </>
     );
 }
