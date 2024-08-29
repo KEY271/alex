@@ -69,19 +69,31 @@ function Board(props: BoardProps) {
         });
     return (
         <>
-            <div
-                className="grid grid-cols-[20px_320px_20px] grid-rows-[20px_320px_20px] sm:grid-cols-[20px_480px_20px]
-                    sm:grid-rows-[20px_480px_20px]">
+            <div className="flex flex-col">
                 <div
-                    className="col-[2] row-[2] box-border grid h-[322px] w-[322px] grid-cols-[repeat(8,40px)]
-                        grid-rows-[repeat(8,40px)] border-l-2 border-t-2 border-black sm:h-[482px] sm:w-[482px]
-                        sm:grid-cols-[repeat(8,60px)] sm:grid-rows-[repeat(8,60px)]">
-                    {board}
+                    data-turn={position.side == Side.White}
+                    className="w-full rotate-180 p-2 data-[turn=true]:text-red-600 data-[turn=true]:underline">
+                    後手
                 </div>
-                <div className="col-[2] row-[3] flex flex-row">{file}</div>
-                <div className="col-[2] row-[1] flex rotate-180 flex-row-reverse">{file}</div>
-                <div className="col-[1] row-[2] flex flex-col-reverse">{rank}</div>
-                <div className="col-[3] row-[2] flex rotate-180 flex-col">{rank}</div>
+                <div
+                    className="grid grid-cols-[20px_320px_20px] grid-rows-[20px_320px_20px]
+                        sm:grid-cols-[20px_480px_20px] sm:grid-rows-[20px_480px_20px]">
+                    <div
+                        className="col-[2] row-[2] box-border grid h-[322px] w-[322px] grid-cols-[repeat(8,40px)]
+                            grid-rows-[repeat(8,40px)] border-l-2 border-t-2 border-black sm:h-[482px] sm:w-[482px]
+                            sm:grid-cols-[repeat(8,60px)] sm:grid-rows-[repeat(8,60px)]">
+                        {board}
+                    </div>
+                    <div className="col-[2] row-[3] flex flex-row">{file}</div>
+                    <div className="col-[2] row-[1] flex rotate-180 flex-row-reverse">{file}</div>
+                    <div className="col-[1] row-[2] flex flex-col-reverse">{rank}</div>
+                    <div className="col-[3] row-[2] flex rotate-180 flex-col">{rank}</div>
+                </div>
+                <div
+                    data-turn={position.side == Side.Black}
+                    className="w-full p-2 data-[turn=true]:text-red-600 data-[turn=true]:underline">
+                    先手
+                </div>
             </div>
         </>
     );

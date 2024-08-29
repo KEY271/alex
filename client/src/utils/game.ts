@@ -24,17 +24,23 @@ type Piece = [PieceType, Side];
 
 export class Position {
     board: Piece[];
+    side: Side;
 
     constructor() {
         this.board = Array(64)
             .fill(0)
             .map(() => [PieceType.None, Side.None]);
+        this.side = Side.Black;
     }
 
     load(mfen: string): void {
         let ix = 0;
         let iy = 7;
-        for (const c of mfen) {
+        const s = mfen.split(" ");
+        if (s.length != 2) {
+            throw new Error("invalid mfen.");
+        }
+        for (const c of s[0]) {
             if (c == "/") {
                 if (ix != 8) {
                     throw new Error("invalid row.");
@@ -107,6 +113,13 @@ export class Position {
         }
         if (ix != 8 || iy != 0) {
             throw new Error("invalid rows.");
+        }
+        if (s[1] == "b") {
+            this.side = Side.Black;
+        } else if (s[1] == "w") {
+            this.side = Side.White;
+        } else {
+            throw new Error("invalid turn.");
         }
     }
 

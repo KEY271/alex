@@ -318,6 +318,8 @@ impl fmt::Display for Board {
                 write!(f, "/")?;
             }
         }
+
+        write!(f, " {}", if self.side == Side::Black { 'b' } else { 'w' })?;
         Ok(())
     }
 }
@@ -660,7 +662,11 @@ impl FromStr for Board {
         let mut board = Board::new();
         let mut ix = 0;
         let mut iy = RANK_NB - 1;
-        for c in s.chars() {
+        let s: Vec<&str> = s.split(" ").collect();
+        if s.len() != 2 {
+            return Err("invalid mfen.".to_string());
+        }
+        for c in s[0].chars() {
             let piece = match c {
                 '/' => {
                     if ix != RANK_NB {
@@ -710,9 +716,16 @@ impl FromStr for Board {
             ix += 1;
         }
         if ix != RANK_NB || iy != 0 {
-            Err("invalid number.".to_string())
-        } else {
-            Ok(board)
+            return Err("invalid number.".to_string());
         }
+
+        if s[1] == "b" {
+            board.side = Side::Black;
+        } else if s[1] == "w" {
+            board.side = Side::White;
+        } else {
+            return Err("invalid turn.".to_string());
+        }
+        Ok(board)
     }
 }
