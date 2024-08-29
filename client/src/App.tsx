@@ -12,7 +12,7 @@ function App() {
 
     return (
         <>
-            <p>{text}</p>
+            <p className="border">{text}</p>
         </>
     );
 }
