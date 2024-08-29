@@ -140,4 +140,112 @@ export class Position {
                 return ["弓2", side];
         }
     }
+
+    movable(ix: number, iy: number): number[] {
+        const movables: number[] = [];
+        const [pt, side] = this.board[iy * 8 + ix];
+        const isNone = (x: number, y: number) => {
+            if (x < 0 || 8 <= x) return false;
+            if (y < 0 || 8 <= y) return false;
+            const side2 = this.board[y * 8 + x][1];
+            return side2 == Side.None;
+        }
+        const canMove = (x: number, y: number) => {
+            if (x < 0 || 8 <= x) return false;
+            if (y < 0 || 8 <= y) return false;
+            const side2 = this.board[y * 8 + x][1];
+            return side != side2;
+        };
+        const pushPossible = (x: number, y: number) => {
+            if (canMove(x, y)) movables.push(index(x, y));
+        }
+        const index = (x: number, y: number) => y * 8 + x;
+        if (side == Side.None) {
+            return movables;
+        }
+        const dir = side == Side.Black ? 1 : -1;
+        switch (pt) {
+            case PieceType.None:
+                break;
+            case PieceType.Light:
+                pushPossible(ix, iy + dir);
+                if (side == Side.Black && iy <= 4 || side == Side.White && iy >= 3) {
+                    pushPossible(ix + 1, iy);
+                    pushPossible(ix - 1, iy);
+                }
+                break;
+            case PieceType.Heavy:
+                pushPossible(ix, iy + dir);
+                if (isNone(ix, iy + dir)) {
+                    pushPossible(ix, iy + dir * 2);
+                }
+                if (side == Side.Black && iy <= 4 || side == Side.White && iy >= 3) {
+                    pushPossible(ix + 1, iy);
+                    pushPossible(ix - 1, iy);
+                }
+                break;
+            case PieceType.King:
+                pushPossible(ix + 1, iy + 1);
+                pushPossible(ix + 1, iy);
+                pushPossible(ix + 1, iy - 1);
+                pushPossible(ix, iy + 1);
+                pushPossible(ix, iy - 1);
+                pushPossible(ix - 1, iy + 1);
+                pushPossible(ix - 1, iy);
+                pushPossible(ix - 1, iy - 1);
+                break;
+            case PieceType.Prince:
+                pushPossible(ix + 1, iy + 1);
+                pushPossible(ix + 1, iy - 1);
+                pushPossible(ix, iy + dir);
+                pushPossible(ix - 1, iy + 1);
+                pushPossible(ix - 1, iy - 1);
+                break;
+            case PieceType.General:
+                pushPossible(ix + 1, iy + dir);
+                pushPossible(ix + 1, iy);
+                pushPossible(ix, iy + 1);
+                pushPossible(ix, iy - 1);
+                pushPossible(ix - 1, iy + dir);
+                pushPossible(ix - 1, iy);
+                break;
+            case PieceType.Knight:
+                pushPossible(ix + 2, iy + 1);
+                pushPossible(ix + 2, iy - 1);
+                pushPossible(ix + 1, iy + 2);
+                pushPossible(ix + 1, iy - 2);
+                pushPossible(ix - 1, iy + 2);
+                pushPossible(ix - 1, iy - 2);
+                pushPossible(ix - 2, iy + 1);
+                pushPossible(ix - 2, iy - 1);
+                break;
+            case PieceType.Arrow:
+                break;
+            case PieceType.Archer0:
+                pushPossible(ix, iy + 1);
+                pushPossible(ix, iy - 1);
+                pushPossible(ix + 1, iy);
+                pushPossible(ix - 1, iy);
+                break;
+            case PieceType.Archer1:
+            case PieceType.Archer2:
+                pushPossible(ix, iy + 1);
+                pushPossible(ix, iy - 1);
+                pushPossible(ix + 1, iy);
+                pushPossible(ix - 1, iy);
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        if (dx == 0 && dy == 0) {
+                            continue;
+                        }
+                        pushPossible(ix + dx, iy + dy);
+                        if (!isNone(ix + dx, iy + dy)) {
+                            continue;
+                        }
+                    }
+                }
+                break;
+        }
+        return movables;
+    }
 }

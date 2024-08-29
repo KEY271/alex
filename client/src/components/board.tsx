@@ -5,10 +5,20 @@ type BoardProps = {
     position: Position;
 };
 
+class State {
+    selected: number;
+    movables: number[];
+
+    constructor(selected: number, movables: number[]) {
+        this.selected = selected;
+        this.movables = movables;
+    }
+}
+
 function Board(props: BoardProps) {
     const { position } = props;
 
-    const [selected, setSelected] = useState(-1);
+    const [state, setState] = useState<State>(new State(-1, []));
 
     const board = Array(64)
         .fill(0)
@@ -19,9 +29,10 @@ function Board(props: BoardProps) {
             const [name, side] = position.piece(ix, iy);
             const onClick = () => {
                 if (side == Side.None) {
-                    setSelected(-1);
+                    setState(new State(-1, []));
                 } else {
-                    setSelected(j);
+                    const movables = position.movable(ix, iy);
+                    setState(new State(j, movables));
                 }
             };
             return (
@@ -29,11 +40,12 @@ function Board(props: BoardProps) {
                     <div
                         onClick={onClick}
                         data-rev={side == Side.White}
-                        data-piece={side != Side.None}
-                        data-selected={selected == j}
+                        data-piece={side != Side.None || state.movables.includes(j)}
+                        data-selected={state.selected == j}
+                        data-movable={state.movables.includes(j)}
                         className="flex h-full w-full select-none items-center justify-center border-red-500 text-[20px]
                             data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
-                            sm:text-[30px]">
+                            sm:text-[30px] data-[movable=true]:bg-[darksalmon]">
                         {name}
                     </div>
                 </div>
