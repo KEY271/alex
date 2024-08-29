@@ -28,7 +28,7 @@ function Board(props: BoardProps) {
             const j = iy * 8 + ix;
             const [name, side] = position.piece(ix, iy);
             const onClick = () => {
-                if (side == Side.None) {
+                if (side != position.side) {
                     setState(new State(-1, []));
                 } else {
                     const movables = position.movable(ix, iy);
@@ -40,7 +40,7 @@ function Board(props: BoardProps) {
                     <div
                         onClick={onClick}
                         data-rev={side == Side.White}
-                        data-piece={side != Side.None || state.movables.includes(j)}
+                        data-piece={side == position.side || state.movables.includes(j)}
                         data-selected={state.selected == j}
                         data-movable={state.movables.includes(j)}
                         className="flex h-full w-full select-none items-center justify-center border-red-500 text-[20px]
