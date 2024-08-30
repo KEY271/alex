@@ -7,8 +7,8 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use super::movegen::{
-    get_from, get_move_type, get_pt, get_to, make_move_drop, make_move_normal, make_move_shoot,
-    Move, MoveType,
+    get_from, get_move_type, get_pt, get_to, make_move_drop, make_move_normal, make_move_return,
+    make_move_shoot, Move, MoveType,
 };
 
 /// Square of the grid.
@@ -740,14 +740,19 @@ impl Board {
             let x2 = read_file(mfen[2])?;
             let y2 = read_rank(mfen[3])?;
             let to = Square::from_usize(y2 * RANK_NB + x2).unwrap();
+            let cap = self.grid[to as usize];
             if mfen.len() == 5 {
                 if mfen[4] == b'S' {
-                    Ok(make_move_shoot(self.grid[to as usize].pt(), from, to))
+                    Ok(make_move_shoot(cap.pt(), from, to))
                 } else {
                     Err("Invalid end character.".to_string())
                 }
             } else {
-                Ok(make_move_normal(self.grid[to as usize].pt(), from, to))
+                if cap.pt() != PieceType::None && cap.side() == self.side {
+                    Ok(make_move_return(from, to))
+                } else {
+                    Ok(make_move_normal(cap.pt(), from, to))
+                }
             }
         } else if mfen.len() == 3 {
             let x = read_file(mfen[0])?;

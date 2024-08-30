@@ -307,6 +307,26 @@ export class Position {
                 pushPossible(ix - 2, iy - 1);
                 break;
             case PieceType.Arrow:
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        if (dx == 0 && dy == 0) {
+                            continue;
+                        }
+                        for (let j = 1; j < 8; j++) {
+                            const x = ix + dx * j;
+                            const y = ix + dy * j;
+                            if (!isNone(x, y)) {
+                                if (x < 0 || 8 <= x) break;
+                                if (y < 0 || 8 <= y) break;
+                                const pt = this.board[y * 8 + x][0];
+                                if (pt == PieceType.Archer0 || pt == PieceType.Archer1) {
+                                    movables.push(index(x, y));
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
                 break;
             case PieceType.Archer0:
                 pushPossible(ix, iy + 1);
