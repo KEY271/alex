@@ -22,22 +22,62 @@ type Side = (typeof Side)[keyof typeof Side];
 
 type Piece = [PieceType, Side];
 
+const get_pt = (c: string) => {
+    switch (c) {
+        case "L":
+        case "l":
+            return PieceType.Light;
+        case "H":
+        case "h":
+            return PieceType.Heavy;
+        case "K":
+        case "k":
+            return PieceType.King;
+        case "P":
+        case "p":
+            return PieceType.Prince;
+        case "G":
+        case "g":
+            return PieceType.General;
+        case "N":
+        case "n":
+            return PieceType.Knight;
+        case "R":
+        case "r":
+            return PieceType.Arrow;
+        case "A":
+        case "a":
+            return PieceType.Archer0;
+        case "B":
+        case "b":
+            return PieceType.Archer1;
+        case "C":
+        case "c":
+            return PieceType.Archer2;
+    }
+    return PieceType.None;
+};
+
 export class Position {
     board: Piece[];
     side: Side;
+    hand_black: [PieceType, number][];
+    hand_white: [PieceType, number][];
 
     constructor() {
         this.board = Array(64)
             .fill(0)
             .map(() => [PieceType.None, Side.None]);
         this.side = Side.Black;
+        this.hand_black = [];
+        this.hand_white = [];
     }
 
     load(mfen: string): void {
         let ix = 0;
         let iy = 7;
         const s = mfen.split(" ");
-        if (s.length != 2) {
+        if (s.length != 3) {
             throw new Error("invalid mfen.");
         }
         for (const c of s[0]) {
@@ -61,48 +101,9 @@ export class Position {
                 }
                 continue;
             }
-            let pt: PieceType = PieceType.None;
-            switch (c) {
-                case "L":
-                case "l":
-                    pt = PieceType.Light;
-                    break;
-                case "H":
-                case "h":
-                    pt = PieceType.Heavy;
-                    break;
-                case "K":
-                case "k":
-                    pt = PieceType.King;
-                    break;
-                case "P":
-                case "p":
-                    pt = PieceType.Prince;
-                    break;
-                case "G":
-                case "g":
-                    pt = PieceType.General;
-                    break;
-                case "N":
-                case "n":
-                    pt = PieceType.Knight;
-                    break;
-                case "R":
-                case "r":
-                    pt = PieceType.Arrow;
-                    break;
-                case "A":
-                case "a":
-                    pt = PieceType.Archer0;
-                    break;
-                case "B":
-                case "b":
-                    pt = PieceType.Archer1;
-                    break;
-                case "C":
-                case "c":
-                    pt = PieceType.Archer2;
-                    break;
+            const pt = get_pt(c);
+            if (pt == PieceType.None) {
+                throw new Error("invalid character.");
             }
             if (c.toUpperCase() == c) {
                 this.board[iy * 8 + ix] = [pt, Side.Black];
@@ -121,6 +122,58 @@ export class Position {
         } else {
             throw new Error("invalid turn.");
         }
+
+        this.hand_black = [];
+        this.hand_white = [];
+        if (s[2] != "-") {
+            let i = 0;
+            while (i < s[2].length) {
+                const c = s[2][i];
+                const pt = get_pt(c);
+                if (pt == PieceType.None) {
+                    throw new Error("invalid character.");
+                }
+                i += 1;
+                let n = parseInt(s[2][i]);
+                if (Number.isNaN(n)) {
+                    n = 1;
+                } else {
+                    i += 1;
+                }
+                if (c.toUpperCase() == c) {
+                    this.hand_black.push([pt, n]);
+                } else {
+                    this.hand_white.push([pt, n]);
+                }
+            }
+        }
+    }
+
+    piecename(pt: PieceType) {
+        switch (pt) {
+            case PieceType.None:
+                return "";
+            case PieceType.Light:
+                return "歩";
+            case PieceType.Heavy:
+                return "重";
+            case PieceType.King:
+                return "玉";
+            case PieceType.Prince:
+                return "子";
+            case PieceType.General:
+                return "将";
+            case PieceType.Knight:
+                return "騎";
+            case PieceType.Arrow:
+                return "➶";
+            case PieceType.Archer0:
+                return "弓0";
+            case PieceType.Archer1:
+                return "弓1";
+            case PieceType.Archer2:
+                return "弓2";
+        }
     }
 
     piece(ix: number, iy: number): [string, Side] {
@@ -128,30 +181,7 @@ export class Position {
         if (side == Side.None) {
             return ["", side];
         }
-        switch (pt) {
-            case PieceType.None:
-                return ["", side];
-            case PieceType.Light:
-                return ["歩", side];
-            case PieceType.Heavy:
-                return ["重", side];
-            case PieceType.King:
-                return ["玉", side];
-            case PieceType.Prince:
-                return ["子", side];
-            case PieceType.General:
-                return ["将", side];
-            case PieceType.Knight:
-                return ["騎", side];
-            case PieceType.Arrow:
-                return ["矢", side];
-            case PieceType.Archer0:
-                return ["弓0", side];
-            case PieceType.Archer1:
-                return ["弓1", side];
-            case PieceType.Archer2:
-                return ["弓2", side];
-        }
+        return [this.piecename(pt), side];
     }
 
     movable(ix: number, iy: number): number[] {

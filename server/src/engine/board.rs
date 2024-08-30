@@ -343,7 +343,40 @@ impl fmt::Display for Board {
             }
         }
 
-        write!(f, " {}", if self.side == Side::Black { 'b' } else { 'w' })?;
+        write!(f, " {} ", if self.side == Side::Black { 'b' } else { 'w' })?;
+
+        if self.hands[0] == 0 && self.hands[1] == 0 {
+            write!(f, "-")?;
+        } else {
+            let pts = [
+                PieceType::Light,
+                PieceType::Heavy,
+                PieceType::General,
+                PieceType::Knight,
+                PieceType::Arrow,
+                PieceType::Archer0,
+            ];
+            for pt in pts {
+                let count = self.count_hand(Side::Black, pt);
+                let piece = pt.into_piece(Side::Black);
+                if count > 0 {
+                    write!(f, "{}", piece)?;
+                }
+                if count > 1 {
+                    write!(f, "{}", count)?;
+                }
+            }
+            for pt in pts {
+                let count = self.count_hand(Side::White, pt);
+                let piece = pt.into_piece(Side::White);
+                if count > 0 {
+                    write!(f, "{}", piece)?;
+                }
+                if count > 1 {
+                    write!(f, "{}", count)?;
+                }
+            }
+        }
         Ok(())
     }
 }

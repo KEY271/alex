@@ -3,7 +3,7 @@ import { Position, Side } from "../utils/game";
 
 type BoardProps = {
     position: Position;
-    setCount: React.Dispatch<React.SetStateAction<number>>
+    setCount: React.Dispatch<React.SetStateAction<number>>;
 };
 
 class State {
@@ -64,7 +64,7 @@ function Board(props: BoardProps) {
                         data-history={state.history.includes(j)}
                         className="flex h-full w-full select-none items-center justify-center border-red-500 text-[20px]
                             data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
-                            data-[movable=true]:bg-[darksalmon] data-[history=true]:bg-[lightsalmon] sm:text-[30px]">
+                            data-[history=true]:bg-[lightsalmon] data-[movable=true]:bg-[darksalmon] sm:text-[30px]">
                         {name}
                     </div>
                 </div>
@@ -86,9 +86,30 @@ function Board(props: BoardProps) {
                 </div>
             );
         });
+    const hand_black = position.hand_black.map(([pt, n], i) => {
+        const name = position.piecename(pt)[0];
+        const count = n == 1 ? "" : n.toString();
+        return (
+            <div key={i} className="text-[20px] sm:text-[30px]">
+                {name}
+                {count}
+            </div>
+        );
+    });
+    const hand_white = position.hand_white.map(([pt, n], i) => {
+        const name = position.piecename(pt)[0];
+        const count = n == 1 ? "" : n.toString();
+        return (
+            <div key={i} className="text-[20px] sm:text-[30px]">
+                {name}
+                {count}
+            </div>
+        );
+    });
     return (
         <>
             <div className="flex flex-col">
+                <div className="flex w-full rotate-180 gap-4">{hand_white}</div>
                 <div
                     data-turn={position.side == Side.White}
                     className="w-full rotate-180 p-2 data-[turn=true]:text-red-600 data-[turn=true]:underline">
@@ -113,6 +134,7 @@ function Board(props: BoardProps) {
                     className="w-full p-2 data-[turn=true]:text-red-600 data-[turn=true]:underline">
                     先手
                 </div>
+                <div className="flex w-full gap-4 text-[20px]">{hand_black}</div>
             </div>
         </>
     );
