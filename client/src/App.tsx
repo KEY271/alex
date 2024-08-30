@@ -3,6 +3,7 @@ import Board from "./components/Board";
 import { Position } from "./utils/game";
 
 function App() {
+    const [count, setCount] = useState(0);
     const [board, setBoard] = useState(new Position());
     useEffect(() => {
         fetch("http://127.0.0.1:3001/api/board", { method: "GET" })
@@ -12,12 +13,12 @@ function App() {
                 position.load(data);
                 setBoard(position);
             });
-    }, []);
+    }, [count]);
 
     return (
         <>
             <div className="flex h-full items-center justify-center">
-                <Board position={board} />
+                <Board position={board} setCount={setCount} />
             </div>
         </>
     );

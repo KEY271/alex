@@ -6,7 +6,7 @@ use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use super::movegen::{get_from, get_move_type, get_pt, get_to, Move, MoveType};
+use super::movegen::{get_from, get_move_type, get_pt, get_to, make_move_normal, Move, MoveType};
 
 /// Square of the grid.
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -34,6 +34,30 @@ impl fmt::Display for Square {
         let iy = *self as usize / RANK_NB;
         write!(f, "{}{}", (ix + 65) as u8 as char, iy + 1)
     }
+}
+
+fn read_file(c: u8) -> Result<usize, String> {
+    let a = 'A' as u8;
+    if c < a {
+        return Err("Invalid Character.".to_string());
+    }
+    let x = (c - a) as usize;
+    if x >= RANK_NB {
+        return Err("Invalid Character.".to_string());
+    }
+    return Ok(x);
+}
+
+fn read_rank(c: u8) -> Result<usize, String> {
+    let a = '1' as u8;
+    if c < a {
+        return Err("Invalid Character.".to_string());
+    }
+    let y = (c - a) as usize;
+    if y >= RANK_NB {
+        return Err("Invalid Character.".to_string());
+    }
+    return Ok(y);
 }
 
 macro_rules! for_pos {
@@ -652,6 +676,22 @@ impl Board {
         }
 
         self.side = !self.side;
+    }
+
+    /// Make a move from mfen.
+    pub fn read_move(&self, mfen: String) -> Result<Move, String> {
+        if mfen.len() != 4 {
+            return Err("Invalid length.".to_string());
+        }
+        let mfen = mfen.as_bytes();
+        let x1 = read_file(mfen[0])?;
+        let y1 = read_rank(mfen[1])?;
+        let from = Square::from_usize(y1 * RANK_NB + x1).unwrap();
+        let x2 = read_file(mfen[2])?;
+        let y2 = read_rank(mfen[3])?;
+        let to = Square::from_usize(y2 * RANK_NB + x2).unwrap();
+        let m = make_move_normal(self.grid[to as usize].pt(), from, to);
+        Ok(m)
     }
 }
 

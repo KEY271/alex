@@ -3,6 +3,7 @@ import { Position, Side } from "../utils/game";
 
 type BoardProps = {
     position: Position;
+    setCount: React.Dispatch<React.SetStateAction<number>>
 };
 
 class State {
@@ -16,7 +17,7 @@ class State {
 }
 
 function Board(props: BoardProps) {
-    const { position } = props;
+    const { position, setCount } = props;
 
     const [state, setState] = useState<State>(new State(-1, []));
 
@@ -28,6 +29,21 @@ function Board(props: BoardProps) {
             const j = iy * 8 + ix;
             const [name, side] = position.piece(ix, iy);
             const onClick = () => {
+                if (state.movables.includes(j)) {
+                    const from = position.square(state.selected);
+                    const to = position.square(j);
+                    fetch("http://127.0.0.1:3001/api/move", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ mfen: from + to })
+                    }).then(() => {
+                        setState(new State(-1, []));
+                        setCount((c) => c + 1);
+                    });
+                    return;
+                }
                 if (side != position.side) {
                     setState(new State(-1, []));
                 } else {

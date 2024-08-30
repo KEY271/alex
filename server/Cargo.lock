@@ -24,6 +24,7 @@ dependencies = [
  "axum",
  "num-derive",
  "num-traits",
+ "serde",
  "strum",
  "strum_macros",
  "tokio",

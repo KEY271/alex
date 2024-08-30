@@ -4,7 +4,7 @@ use strum::IntoEnumIterator;
 
 use crate::foreach_bb;
 
-use super::board::{get_pos, Bitboard, Board, PieceType, Side, Square};
+use super::board::{get_pos, Bitboard, Board, PieceType, Side, Square, RANK_NB};
 
 /// Move.
 pub type Move = u32;

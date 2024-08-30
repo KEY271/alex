@@ -182,7 +182,7 @@ export class Position {
                 break;
             case PieceType.Light:
                 pushPossible(ix, iy + dir);
-                if ((side == Side.Black && iy <= 4) || (side == Side.White && iy >= 3)) {
+                if ((side == Side.Black && iy >= 5) || (side == Side.White && iy <= 2)) {
                     pushPossible(ix + 1, iy);
                     pushPossible(ix - 1, iy);
                 }
@@ -192,7 +192,7 @@ export class Position {
                 if (isNone(ix, iy + dir)) {
                     pushPossible(ix, iy + dir * 2);
                 }
-                if ((side == Side.Black && iy <= 4) || (side == Side.White && iy >= 3)) {
+                if ((side == Side.Black && iy >= 5) || (side == Side.White && iy <= 2)) {
                     pushPossible(ix + 1, iy);
                     pushPossible(ix - 1, iy);
                 }
@@ -260,5 +260,11 @@ export class Position {
                 break;
         }
         return movables;
+    }
+
+    square(i: number): string {
+        const x = i % 8;
+        const y = Math.floor(i / 8);
+        return String.fromCharCode("A".charCodeAt(0) + x) + (y + 1).toString();
     }
 }
