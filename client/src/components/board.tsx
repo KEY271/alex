@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PieceType, Position, Side } from "../utils/game";
+import Dialog from "./Dialog";
 
 type BoardProps = {
     position: Position;
@@ -25,6 +26,9 @@ class State {
 function Board(props: BoardProps) {
     const { position, setCount } = props;
 
+    const [isOpen, setOpen] = useState(false);
+    const [action, setAction] = useState<{ fn: (res: boolean) => () => void }>({ fn: () => () => {} });
+
     const [state, setState] = useState<State>(new State(-1, [], [], Side.None, 0));
 
     const board = Array(64)
@@ -33,19 +37,42 @@ function Board(props: BoardProps) {
             const iy = Math.floor((63 - i) / 8);
             const ix = i % 8;
             const j = iy * 8 + ix;
-            const [name, side] = position.piece(ix, iy);
+            const [pt, side] = position.piece(ix, iy);
             const puttable =
                 side == Side.None && ((state.side == Side.Black && iy <= 4) || (state.side == Side.White && iy >= 3));
             const onClick = () => {
                 if (state.movables.includes(j)) {
                     const from = position.square(state.selected);
                     const to = position.square(j);
+                    let mfen = from + to;
+                    const pt2 = position.piece_index(state.selected)[0];
+                    if (pt2 == PieceType.Archer1 || pt2 == PieceType.Archer2) {
+                        if (state.movables.filter((v) => v == j).length == 2) {
+                            setAction({fn: (res: boolean) => () => {
+                                mfen += (res ? "S" : "");
+                                setOpen(false);
+                                fetch("http://127.0.0.1:3001/api/move", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json"
+                                    },
+                                    body: JSON.stringify({ mfen: mfen })
+                                }).then(() => {
+                                    setState(new State(-1, [], [state.selected, j], Side.None, 0));
+                                    setCount((c) => c + 1);
+                                });
+                            }});
+                            setOpen(true);
+                            return;
+                        }
+                        mfen += "S";
+                    }
                     fetch("http://127.0.0.1:3001/api/move", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"
                         },
-                        body: JSON.stringify({ mfen: from + to })
+                        body: JSON.stringify({ mfen: mfen })
                     }).then(() => {
                         setState(new State(-1, [], [state.selected, j], Side.None, 0));
                         setCount((c) => c + 1);
@@ -88,7 +115,7 @@ function Board(props: BoardProps) {
                         className="flex h-full w-full select-none items-center justify-center border-red-500 text-[20px]
                             data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
                             data-[history=true]:bg-[lightsalmon] data-[movable=true]:bg-[darksalmon] sm:text-[30px]">
-                        {name}
+                        {position.piecename(pt)}
                     </div>
                 </div>
             );
@@ -137,6 +164,7 @@ function Board(props: BoardProps) {
     const hand_white = position.hand_white.map(hand(Side.White));
     return (
         <>
+            <Dialog text="矢を打ちますか？" isOpen={isOpen} onClose={() => { setOpen(false); }} action={action.fn} />
             <div className="flex flex-col">
                 <div className="flex h-[40px] w-full rotate-180 gap-4">{hand_white}</div>
                 <div

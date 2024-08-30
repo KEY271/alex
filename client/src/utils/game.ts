@@ -216,12 +216,16 @@ export class Position {
         return side == Side.Black ? name.toUpperCase() : name;
     }
 
-    piece(ix: number, iy: number): [string, Side] {
-        const [pt, side] = this.board[iy * 8 + ix];
+    piece(ix: number, iy: number): [PieceType, Side] {
+        return this.piece_index(iy * 8 + ix);
+    }
+
+    piece_index(i: number): [PieceType, Side] {
+        const [pt, side] = this.board[i];
         if (side == Side.None) {
-            return ["", side];
+            return [PieceType.None, side];
         }
-        return [this.piecename(pt), side];
+        return [pt, side];
     }
 
     movable(ix: number, iy: number): number[] {
@@ -321,9 +325,11 @@ export class Position {
                         if (dx == 0 && dy == 0) {
                             continue;
                         }
-                        pushPossible(ix + dx, iy + dy);
-                        if (!isNone(ix + dx, iy + dy)) {
-                            continue;
+                        for (let j = 1; j < 8; j++) {
+                            pushPossible(ix + dx * j, iy + dy * j);
+                            if (!isNone(ix + dx * j, iy + dy * j)) {
+                                break;
+                            }
                         }
                     }
                 }

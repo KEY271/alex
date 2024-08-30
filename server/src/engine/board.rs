@@ -7,7 +7,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use super::movegen::{
-    get_from, get_move_type, get_pt, get_to, make_move_drop, make_move_normal, Move, MoveType,
+    get_from, get_move_type, get_pt, get_to, make_move_drop, make_move_normal, make_move_shoot, Move, MoveType
 };
 
 /// Square of the grid.
@@ -625,8 +625,8 @@ impl Board {
             PieceType::Knight => 1 << HAND_KNIGHT_SHIFT,
             PieceType::Arrow => 1 << HAND_ARROW_SHIFT,
             PieceType::Archer0 => 1 << HAND_ARCHER_SHIFT,
-            PieceType::Archer1 => 1 << HAND_ARCHER_SHIFT + 1 << HAND_ARROW_SHIFT,
-            PieceType::Archer2 => 1 << HAND_ARCHER_SHIFT + 2 << HAND_ARROW_SHIFT,
+            PieceType::Archer1 => (1 << HAND_ARCHER_SHIFT) + (1 << HAND_ARROW_SHIFT),
+            PieceType::Archer2 => (1 << HAND_ARCHER_SHIFT) + (2 << HAND_ARROW_SHIFT),
             _ => 0,
         };
     }
@@ -732,15 +732,22 @@ impl Board {
     /// Make a move from mfen.
     pub fn read_move(&self, mfen: String) -> Result<Move, String> {
         let mfen = mfen.as_bytes();
-        if mfen.len() == 4 {
+        if mfen.len() == 4 || mfen.len() == 5 {
             let x1 = read_file(mfen[0])?;
             let y1 = read_rank(mfen[1])?;
             let from = Square::from_usize(y1 * RANK_NB + x1).unwrap();
             let x2 = read_file(mfen[2])?;
             let y2 = read_rank(mfen[3])?;
             let to = Square::from_usize(y2 * RANK_NB + x2).unwrap();
-            let m = make_move_normal(self.grid[to as usize].pt(), from, to);
-            Ok(m)
+            if mfen.len() == 5 {
+                if mfen[4] == b'S' {
+                    Ok(make_move_shoot(self.grid[to as usize].pt(), from, to))
+                } else {
+                    Err("Invalid end character.".to_string())
+                }
+            } else {
+                Ok(make_move_normal(self.grid[to as usize].pt(), from, to))
+            }
         } else if mfen.len() == 3 {
             let x = read_file(mfen[0])?;
             let y = read_rank(mfen[1])?;
