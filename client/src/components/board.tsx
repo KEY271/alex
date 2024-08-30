@@ -9,17 +9,19 @@ type BoardProps = {
 class State {
     selected: number;
     movables: number[];
+    history: number[];
 
-    constructor(selected: number, movables: number[]) {
+    constructor(selected: number, movables: number[], history: number[]) {
         this.selected = selected;
         this.movables = movables;
+        this.history = history;
     }
 }
 
 function Board(props: BoardProps) {
     const { position, setCount } = props;
 
-    const [state, setState] = useState<State>(new State(-1, []));
+    const [state, setState] = useState<State>(new State(-1, [], []));
 
     const board = Array(64)
         .fill(0)
@@ -39,16 +41,16 @@ function Board(props: BoardProps) {
                         },
                         body: JSON.stringify({ mfen: from + to })
                     }).then(() => {
-                        setState(new State(-1, []));
+                        setState(new State(-1, [], [state.selected, j]));
                         setCount((c) => c + 1);
                     });
                     return;
                 }
                 if (side != position.side) {
-                    setState(new State(-1, []));
+                    setState(new State(-1, [], []));
                 } else {
                     const movables = position.movable(ix, iy);
-                    setState(new State(j, movables));
+                    setState(new State(j, movables, []));
                 }
             };
             return (
@@ -59,9 +61,10 @@ function Board(props: BoardProps) {
                         data-piece={side == position.side || state.movables.includes(j)}
                         data-selected={state.selected == j}
                         data-movable={state.movables.includes(j)}
+                        data-history={state.history.includes(j)}
                         className="flex h-full w-full select-none items-center justify-center border-red-500 text-[20px]
                             data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
-                            data-[movable=true]:bg-[darksalmon] sm:text-[30px]">
+                            data-[movable=true]:bg-[darksalmon] data-[history=true]:bg-[lightsalmon] sm:text-[30px]">
                         {name}
                     </div>
                 </div>

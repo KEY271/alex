@@ -576,7 +576,7 @@ impl Board {
             PieceType::Archer0 => 1 << HAND_ARCHER_SHIFT,
             PieceType::Archer1 => 1 << HAND_ARCHER_SHIFT + 1 << HAND_ARROW_SHIFT,
             PieceType::Archer2 => 1 << HAND_ARCHER_SHIFT + 2 << HAND_ARROW_SHIFT,
-            _ => panic!(),
+            _ => 0,
         };
     }
 
