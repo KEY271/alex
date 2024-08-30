@@ -6,7 +6,9 @@ use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
-use super::movegen::{get_from, get_move_type, get_pt, get_to, make_move_normal, Move, MoveType};
+use super::movegen::{
+    get_from, get_move_type, get_pt, get_to, make_move_drop, make_move_normal, Move, MoveType,
+};
 
 /// Square of the grid.
 #[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -181,6 +183,22 @@ impl PieceType {
             Piece::from_usize(*self as usize).unwrap()
         } else {
             Piece::from_usize(*self as usize + 16).unwrap()
+        }
+    }
+
+    fn from_char(mfen: u8) -> PieceType {
+        match mfen {
+            b'L' | b'l' => PieceType::Light,
+            b'H' | b'h' => PieceType::Heavy,
+            b'K' | b'k' => PieceType::King1,
+            b'P' | b'p' => PieceType::Prince1,
+            b'G' | b'g' => PieceType::General,
+            b'N' | b'n' => PieceType::Knight,
+            b'R' | b'r' => PieceType::Arrow,
+            b'A' | b'a' => PieceType::Archer0,
+            b'B' | b'b' => PieceType::Archer1,
+            b'C' | b'c' => PieceType::Archer2,
+            _ => PieceType::None,
         }
     }
 }
@@ -713,18 +731,26 @@ impl Board {
 
     /// Make a move from mfen.
     pub fn read_move(&self, mfen: String) -> Result<Move, String> {
-        if mfen.len() != 4 {
-            return Err("Invalid length.".to_string());
-        }
         let mfen = mfen.as_bytes();
-        let x1 = read_file(mfen[0])?;
-        let y1 = read_rank(mfen[1])?;
-        let from = Square::from_usize(y1 * RANK_NB + x1).unwrap();
-        let x2 = read_file(mfen[2])?;
-        let y2 = read_rank(mfen[3])?;
-        let to = Square::from_usize(y2 * RANK_NB + x2).unwrap();
-        let m = make_move_normal(self.grid[to as usize].pt(), from, to);
-        Ok(m)
+        if mfen.len() == 4 {
+            let x1 = read_file(mfen[0])?;
+            let y1 = read_rank(mfen[1])?;
+            let from = Square::from_usize(y1 * RANK_NB + x1).unwrap();
+            let x2 = read_file(mfen[2])?;
+            let y2 = read_rank(mfen[3])?;
+            let to = Square::from_usize(y2 * RANK_NB + x2).unwrap();
+            let m = make_move_normal(self.grid[to as usize].pt(), from, to);
+            Ok(m)
+        } else if mfen.len() == 3 {
+            let x = read_file(mfen[0])?;
+            let y = read_rank(mfen[1])?;
+            let to = Square::from_usize(y * RANK_NB + x).unwrap();
+            let pt = PieceType::from_char(mfen[2]);
+            let m = make_move_drop(pt, to);
+            Ok(m)
+        } else {
+            Err("Invalid length.".to_string())
+        }
     }
 }
 

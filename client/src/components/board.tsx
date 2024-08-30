@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Position, Side } from "../utils/game";
+import { PieceType, Position, Side } from "../utils/game";
 
 type BoardProps = {
     position: Position;
@@ -10,18 +10,22 @@ class State {
     selected: number;
     movables: number[];
     history: number[];
+    side: number;
+    hand: number;
 
-    constructor(selected: number, movables: number[], history: number[]) {
+    constructor(selected: number, movables: number[], history: number[], side: number, hand: number) {
         this.selected = selected;
         this.movables = movables;
         this.history = history;
+        this.side = side;
+        this.hand = hand;
     }
 }
 
 function Board(props: BoardProps) {
     const { position, setCount } = props;
 
-    const [state, setState] = useState<State>(new State(-1, [], []));
+    const [state, setState] = useState<State>(new State(-1, [], [], Side.None, 0));
 
     const board = Array(64)
         .fill(0)
@@ -30,6 +34,8 @@ function Board(props: BoardProps) {
             const ix = i % 8;
             const j = iy * 8 + ix;
             const [name, side] = position.piece(ix, iy);
+            const puttable =
+                side == Side.None && ((state.side == Side.Black && iy <= 4) || (state.side == Side.White && iy >= 3));
             const onClick = () => {
                 if (state.movables.includes(j)) {
                     const from = position.square(state.selected);
@@ -41,16 +47,33 @@ function Board(props: BoardProps) {
                         },
                         body: JSON.stringify({ mfen: from + to })
                     }).then(() => {
-                        setState(new State(-1, [], [state.selected, j]));
+                        setState(new State(-1, [], [state.selected, j], Side.None, 0));
+                        setCount((c) => c + 1);
+                    });
+                    return;
+                }
+                if (puttable) {
+                    const to = position.square(j);
+                    const hand =
+                        position.side == Side.Black ? position.hand_black[state.hand] : position.hand_white[state.hand];
+                    const typ = position.piece_mfen(hand[0], position.side);
+                    fetch("http://127.0.0.1:3001/api/move", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ mfen: to + typ })
+                    }).then(() => {
+                        setState(new State(-1, [], [j], Side.None, 0));
                         setCount((c) => c + 1);
                     });
                     return;
                 }
                 if (side != position.side) {
-                    setState(new State(-1, [], []));
+                    setState(new State(-1, [], [], Side.None, 0));
                 } else {
                     const movables = position.movable(ix, iy);
-                    setState(new State(j, movables, []));
+                    setState(new State(j, movables, [], Side.None, 0));
                 }
             };
             return (
@@ -58,9 +81,9 @@ function Board(props: BoardProps) {
                     <div
                         onClick={onClick}
                         data-rev={side == Side.White}
-                        data-piece={side == position.side || state.movables.includes(j)}
+                        data-piece={side == position.side || state.movables.includes(j) || puttable}
                         data-selected={state.selected == j}
-                        data-movable={state.movables.includes(j)}
+                        data-movable={state.movables.includes(j) || puttable}
                         data-history={state.history.includes(j)}
                         className="flex h-full w-full select-none items-center justify-center border-red-500 text-[20px]
                             data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
@@ -86,33 +109,40 @@ function Board(props: BoardProps) {
                 </div>
             );
         });
-    const hand_black = position.hand_black.map(([pt, n], i) => {
+    const hand = (side: Side) => (v: [PieceType, number], i: number) => {
+        const [pt, n] = v;
         const name = position.piecename(pt)[0];
         const count = n == 1 ? "" : n.toString();
+        const onClick = () => {
+            if (position.side == side) {
+                setState(new State(-1, [], [], side, i));
+            }
+        };
         return (
-            <div key={i} className="text-[20px] sm:text-[30px]">
-                {name}
+            <div
+                key={i}
+                data-turn={position.side == side}
+                className="flex select-none text-[20px] data-[turn=true]:cursor-pointer sm:text-[30px]"
+                onClick={onClick}>
+                <div
+                    data-selected={side == state.side && i == state.hand}
+                    className="border-2 border-transparent data-[selected=true]:border-red-500">
+                    {name}
+                </div>
                 {count}
             </div>
         );
-    });
-    const hand_white = position.hand_white.map(([pt, n], i) => {
-        const name = position.piecename(pt)[0];
-        const count = n == 1 ? "" : n.toString();
-        return (
-            <div key={i} className="text-[20px] sm:text-[30px]">
-                {name}
-                {count}
-            </div>
-        );
-    });
+    };
+    const hand_black = position.hand_black.map(hand(Side.Black));
+    const hand_white = position.hand_white.map(hand(Side.White));
     return (
         <>
             <div className="flex flex-col">
-                <div className="flex w-full rotate-180 gap-4">{hand_white}</div>
+                <div className="flex h-[40px] w-full rotate-180 gap-4">{hand_white}</div>
                 <div
                     data-turn={position.side == Side.White}
-                    className="w-full rotate-180 p-2 data-[turn=true]:text-red-600 data-[turn=true]:underline">
+                    className="w-full rotate-180 select-none p-2 data-[turn=true]:text-red-600
+                        data-[turn=true]:underline">
                     後手
                 </div>
                 <div
@@ -131,10 +161,10 @@ function Board(props: BoardProps) {
                 </div>
                 <div
                     data-turn={position.side == Side.Black}
-                    className="w-full p-2 data-[turn=true]:text-red-600 data-[turn=true]:underline">
+                    className="w-full select-none p-2 data-[turn=true]:text-red-600 data-[turn=true]:underline">
                     先手
                 </div>
-                <div className="flex w-full gap-4 text-[20px]">{hand_black}</div>
+                <div className="flex h-[40px] w-full gap-4 text-[20px]">{hand_black}</div>
             </div>
         </>
     );

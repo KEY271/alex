@@ -1,4 +1,4 @@
-const PieceType = {
+export const PieceType = {
     None: 0,
     Light: 1,
     Heavy: 2,
@@ -11,16 +11,16 @@ const PieceType = {
     Archer1: 9,
     Archer2: 10
 } as const;
-type PieceType = (typeof PieceType)[keyof typeof PieceType];
+export type PieceType = (typeof PieceType)[keyof typeof PieceType];
 
 export const Side = {
     None: 0,
     Black: 1,
     White: 2
 } as const;
-type Side = (typeof Side)[keyof typeof Side];
+export type Side = (typeof Side)[keyof typeof Side];
 
-type Piece = [PieceType, Side];
+export type Piece = [PieceType, Side];
 
 const get_pt = (c: string) => {
     switch (c) {
@@ -174,6 +174,46 @@ export class Position {
             case PieceType.Archer2:
                 return "弓2";
         }
+    }
+
+    piece_mfen(pt: PieceType, side: Side) {
+        let name = "";
+        switch (pt) {
+            case PieceType.None:
+                name = "";
+                break;
+            case PieceType.Light:
+                name = "l";
+                break;
+            case PieceType.Heavy:
+                name = "h";
+                break;
+            case PieceType.King:
+                name = "k";
+                break;
+            case PieceType.Prince:
+                name = "p";
+                break;
+            case PieceType.General:
+                name = "g";
+                break;
+            case PieceType.Knight:
+                name = "n";
+                break;
+            case PieceType.Arrow:
+                name = "r";
+                break;
+            case PieceType.Archer0:
+                name = "a";
+                break;
+            case PieceType.Archer1:
+                name = "b";
+                break;
+            case PieceType.Archer2:
+                name = "c";
+                break;
+        }
+        return side == Side.Black ? name.toUpperCase() : name;
     }
 
     piece(ix: number, iy: number): [string, Side] {
