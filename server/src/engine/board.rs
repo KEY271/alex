@@ -8,7 +8,7 @@ use strum_macros::EnumIter;
 
 use super::movegen::{
     get_from, get_move_type, get_pt, get_to, make_move_drop, make_move_normal, make_move_return,
-    make_move_shoot, Move, MoveType,
+    make_move_shoot, make_move_supply, Move, MoveType,
 };
 
 /// Square of the grid.
@@ -759,8 +759,12 @@ impl Board {
             let y = read_rank(mfen[1])?;
             let to = Square::from_usize(y * RANK_NB + x).unwrap();
             let pt = PieceType::from_char(mfen[2]);
-            let m = make_move_drop(pt, to);
-            Ok(m)
+            let to_pt = self.grid[to as usize].pt();
+            if to_pt == PieceType::Archer0 || to_pt == PieceType::Archer1 {
+                Ok(make_move_supply(to))
+            } else {
+                Ok(make_move_drop(pt, to))
+            }
         } else {
             Err("Invalid length.".to_string())
         }

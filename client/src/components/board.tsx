@@ -38,8 +38,21 @@ function Board(props: BoardProps) {
             const ix = i % 8;
             const j = iy * 8 + ix;
             const [pt, side] = position.piece(ix, iy);
-            const puttable =
+            let puttable =
                 side == Side.None && ((state.side == Side.Black && iy <= 4) || (state.side == Side.White && iy >= 3));
+            if (state.side != Side.None) {
+                const hand =
+                    position.side == Side.Black
+                        ? position.hand_black[state.hand][0]
+                        : position.hand_white[state.hand][0];
+                if (
+                    hand == PieceType.Arrow &&
+                    side == state.side &&
+                    (pt == PieceType.Archer0 || pt == PieceType.Archer1)
+                ) {
+                    puttable = true;
+                }
+            }
             const onClick = () => {
                 if (state.movables.includes(j)) {
                     const from = position.square(state.selected);
