@@ -31,19 +31,23 @@ function Dialog(props: DialogProps) {
 
     const handleClickContent = useCallback((event: React.MouseEvent<HTMLDivElement>): void => {
         event.stopPropagation();
-    },[]);
+    }, []);
 
     return (
         <dialog ref={ref} onClose={onClose}>
-            <div onClick={handleClickContent} className="p-4 flex flex-col gap-4">
+            <div onClick={handleClickContent} className="flex flex-col gap-4 p-4">
                 <p>{text}</p>
                 <div className="flex justify-between">
-                    <button className="p-2 hover:bg-[lightsalmon] transition rounded" onClick={action(true)}>はい</button>
-                    <button className="p-2 hover:bg-[lightsalmon] transition rounded" onClick={action(false)}>いいえ</button>
+                    <button className="rounded p-2 transition hover:bg-[lightsalmon]" onClick={action(true)}>
+                        はい
+                    </button>
+                    <button className="rounded p-2 transition hover:bg-[lightsalmon]" onClick={action(false)}>
+                        いいえ
+                    </button>
                 </div>
             </div>
         </dialog>
-    )
+    );
 }
 
 export default Dialog;

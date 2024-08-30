@@ -7,7 +7,8 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use super::movegen::{
-    get_from, get_move_type, get_pt, get_to, make_move_drop, make_move_normal, make_move_shoot, Move, MoveType
+    get_from, get_move_type, get_pt, get_to, make_move_drop, make_move_normal, make_move_shoot,
+    Move, MoveType,
 };
 
 /// Square of the grid.

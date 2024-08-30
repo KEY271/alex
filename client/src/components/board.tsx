@@ -48,20 +48,22 @@ function Board(props: BoardProps) {
                     const pt2 = position.piece_index(state.selected)[0];
                     if (pt2 == PieceType.Archer1 || pt2 == PieceType.Archer2) {
                         if (state.movables.filter((v) => v == j).length == 2) {
-                            setAction({fn: (res: boolean) => () => {
-                                mfen += (res ? "S" : "");
-                                setOpen(false);
-                                fetch("http://127.0.0.1:3001/api/move", {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json"
-                                    },
-                                    body: JSON.stringify({ mfen: mfen })
-                                }).then(() => {
-                                    setState(new State(-1, [], [state.selected, j], Side.None, 0));
-                                    setCount((c) => c + 1);
-                                });
-                            }});
+                            setAction({
+                                fn: (res: boolean) => () => {
+                                    mfen += res ? "S" : "";
+                                    setOpen(false);
+                                    fetch("http://127.0.0.1:3001/api/move", {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json"
+                                        },
+                                        body: JSON.stringify({ mfen: mfen })
+                                    }).then(() => {
+                                        setState(new State(-1, [], [state.selected, j], Side.None, 0));
+                                        setCount((c) => c + 1);
+                                    });
+                                }
+                            });
                             setOpen(true);
                             return;
                         }
@@ -164,7 +166,14 @@ function Board(props: BoardProps) {
     const hand_white = position.hand_white.map(hand(Side.White));
     return (
         <>
-            <Dialog text="矢を打ちますか？" isOpen={isOpen} onClose={() => { setOpen(false); }} action={action.fn} />
+            <Dialog
+                text="矢を打ちますか？"
+                isOpen={isOpen}
+                onClose={() => {
+                    setOpen(false);
+                }}
+                action={action.fn}
+            />
             <div className="flex flex-col">
                 <div className="flex h-[40px] w-full rotate-180 gap-4">{hand_white}</div>
                 <div
