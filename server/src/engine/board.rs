@@ -771,6 +771,35 @@ impl Board {
     }
 }
 
+impl Piece {
+    fn from_char(c: char) -> Result<Self, String> {
+        let p = match c {
+            'L' => Piece::BLight,
+            'H' => Piece::BHeavy,
+            'K' => Piece::BKing2,
+            'P' => Piece::BPrince1,
+            'G' => Piece::BGeneral,
+            'N' => Piece::BKnight,
+            'R' => Piece::BArrow,
+            'A' => Piece::BArcher0,
+            'B' => Piece::BArcher1,
+            'C' => Piece::BArcher2,
+            'l' => Piece::WLight,
+            'h' => Piece::WHeavy,
+            'k' => Piece::WKing2,
+            'p' => Piece::WPrince1,
+            'g' => Piece::WGeneral,
+            'n' => Piece::WKnight,
+            'r' => Piece::WArrow,
+            'a' => Piece::WArcher0,
+            'b' => Piece::WArcher1,
+            'c' => Piece::WArcher2,
+            _ => return Err(format!("invalid char: {}.", c))
+        };
+        Ok(p)
+    }
+}
+
 impl FromStr for Board {
     type Err = String;
 
@@ -779,7 +808,7 @@ impl FromStr for Board {
         let mut ix = 0;
         let mut iy = RANK_NB - 1;
         let s: Vec<&str> = s.split(" ").collect();
-        if s.len() != 2 {
+        if s.len() != 3 {
             return Err("invalid mfen.".to_string());
         }
         for c in s[0].chars() {
@@ -794,34 +823,18 @@ impl FromStr for Board {
                     }
                     iy -= 1;
                     continue;
-                }
-                'L' => Piece::BLight,
-                'H' => Piece::BHeavy,
-                'K' => Piece::BKing2,
-                'P' => Piece::BPrince1,
-                'G' => Piece::BGeneral,
-                'N' => Piece::BKnight,
-                'R' => Piece::BArrow,
-                'A' => Piece::BArcher0,
-                'B' => Piece::BArcher1,
-                'C' => Piece::BArcher2,
-                'l' => Piece::WLight,
-                'h' => Piece::WHeavy,
-                'k' => Piece::WKing2,
-                'p' => Piece::WPrince1,
-                'g' => Piece::WGeneral,
-                'n' => Piece::WKnight,
-                'r' => Piece::WArrow,
-                'a' => Piece::WArcher0,
-                'b' => Piece::WArcher1,
-                'c' => Piece::WArcher2,
+                },
                 c => {
-                    let i = c as i32 - 48;
-                    if i < 0 || ix + i as usize > RANK_NB {
-                        return Err(format!("invalid char: {}.", c));
+                    if let Ok(p) = Piece::from_char(c) {
+                        p
+                    } else {
+                        let i = c as i32 - 48;
+                        if i < 0 || ix + i as usize > RANK_NB {
+                            return Err(format!("invalid char: {}.", c));
+                        }
+                        ix += i as usize;
+                        continue;
                     }
-                    ix += i as usize;
-                    continue;
                 }
             };
             let i = iy * RANK_NB + ix;
@@ -841,6 +854,26 @@ impl FromStr for Board {
             board.side = Side::White;
         } else {
             return Err("invalid turn.".to_string());
+        }
+
+        if s[2] != "-" {
+            let hand: Vec<char> = s[2].chars().collect();
+            let mut i = 0;
+            while i < hand.len() {
+                let p = Piece::from_char(hand[i])?;
+                i += 1;
+                if i >= hand.len() || Piece::from_char(hand[i]).is_err() {
+                    board.add_hand(p.side(), p.pt());
+                    break;
+                }
+                let count = hand[i] as i32 - 48;
+                if count <= 1 {
+                    return Err(format!("invalid char: {}.", hand[i]));
+                }
+                for _ in 0..count {
+                    board.add_hand(p.side(), p.pt());
+                }
+            }
         }
         Ok(board)
     }
