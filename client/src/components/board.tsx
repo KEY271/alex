@@ -26,8 +26,11 @@ class State {
 function Board(props: BoardProps) {
     const { position, setCount } = props;
 
-    const [isOpen, setOpen] = useState(false);
-    const [action, setAction] = useState<{ fn: (res: boolean) => () => void }>({ fn: () => () => {} });
+    const [isShootDialogOpen, setShootDialogOpen] = useState(false);
+    const [shootAction, setShootAction] = useState<{ fn: (res: boolean) => () => void }>({ fn: () => () => {} });
+    const [isPutDialogOpen, setPutDialogOpen] = useState(false);
+    const [putCandidates, setPutCandidates] = useState<[string, number][]>([]);
+    const [putAction, setPutAction] = useState<{ fn: (res: number) => () => void }>({ fn: () => () => {} });
 
     const [state, setState] = useState<State>(new State(-1, [], [], Side.None, 0));
 
@@ -61,10 +64,10 @@ function Board(props: BoardProps) {
                     const pt2 = position.piece_index(state.selected)[0];
                     if (pt2 == PieceType.Archer1 || pt2 == PieceType.Archer2) {
                         if (state.movables.filter((v) => v == j).length == 2) {
-                            setAction({
+                            setShootAction({
                                 fn: (res: boolean) => () => {
                                     mfen += res ? "S" : "";
-                                    setOpen(false);
+                                    setShootDialogOpen(false);
                                     fetch("http://127.0.0.1:3001/api/move", {
                                         method: "POST",
                                         headers: {
@@ -77,7 +80,7 @@ function Board(props: BoardProps) {
                                     });
                                 }
                             });
-                            setOpen(true);
+                            setShootDialogOpen(true);
                             return;
                         }
                         mfen += "S";
@@ -96,9 +99,44 @@ function Board(props: BoardProps) {
                 }
                 if (puttable) {
                     const to = position.square(j);
-                    const hand =
-                        position.side == Side.Black ? position.hand_black[state.hand] : position.hand_white[state.hand];
-                    const typ = position.piece_mfen(hand[0], position.side);
+                    const hand = position.side == Side.Black ? position.hand_black : position.hand_white;
+                    const typ = position.piece_mfen(hand[state.hand][0], position.side);
+                    if (hand[state.hand][0] == PieceType.Archer0) {
+                        const arrow = hand.filter((v) => v[0] == PieceType.Arrow);
+                        if (arrow.length == 1) {
+                            if (arrow[0][1] >= 2) {
+                                setPutCandidates([
+                                    ["0本", 0],
+                                    ["1本", 1],
+                                    ["2本", 2]
+                                ]);
+                            } else {
+                                setPutCandidates([
+                                    ["0本", 0],
+                                    ["1本", 1]
+                                ]);
+                            }
+                            setPutAction({
+                                fn: (res) => () => {
+                                    setPutDialogOpen(false);
+                                    fetch("http://127.0.0.1:3001/api/move", {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json"
+                                        },
+                                        body: JSON.stringify({
+                                            mfen: to + String.fromCharCode(typ.charCodeAt(0) + res)
+                                        })
+                                    }).then(() => {
+                                        setState(new State(-1, [], [j], Side.None, 0));
+                                        setCount((c) => c + 1);
+                                    });
+                                }
+                            });
+                            setPutDialogOpen(true);
+                            return;
+                        }
+                    }
                     fetch("http://127.0.0.1:3001/api/move", {
                         method: "POST",
                         headers: {
@@ -181,11 +219,24 @@ function Board(props: BoardProps) {
         <>
             <Dialog
                 text="矢を打ちますか？"
-                isOpen={isOpen}
+                isOpen={isShootDialogOpen}
                 onClose={() => {
-                    setOpen(false);
+                    setShootDialogOpen(false);
                 }}
-                action={action.fn}
+                candidates={[
+                    ["はい", true],
+                    ["いいえ", false]
+                ]}
+                action={shootAction.fn}
+            />
+            <Dialog
+                text="何本の矢を装填しますか？"
+                isOpen={isPutDialogOpen}
+                onClose={() => {
+                    setPutDialogOpen(false);
+                }}
+                candidates={putCandidates}
+                action={putAction.fn}
             />
             <div className="flex flex-col">
                 <div className="flex h-[40px] w-full rotate-180 gap-4">{hand_white}</div>

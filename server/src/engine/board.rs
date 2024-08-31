@@ -636,8 +636,8 @@ impl Board {
             PieceType::Knight => 1 << HAND_KNIGHT_SHIFT,
             PieceType::Arrow => 1 << HAND_ARROW_SHIFT,
             PieceType::Archer0 => 1 << HAND_ARCHER_SHIFT,
-            PieceType::Archer1 => 1 << HAND_ARCHER_SHIFT + 1 << HAND_ARROW_SHIFT,
-            PieceType::Archer2 => 1 << HAND_ARCHER_SHIFT + 2 << HAND_ARROW_SHIFT,
+            PieceType::Archer1 => (1 << HAND_ARCHER_SHIFT) + (1 << HAND_ARROW_SHIFT),
+            PieceType::Archer2 => (1 << HAND_ARCHER_SHIFT) + (2 << HAND_ARROW_SHIFT),
             _ => panic!(),
         };
     }
