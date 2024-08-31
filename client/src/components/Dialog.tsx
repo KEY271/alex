@@ -46,7 +46,7 @@ function Dialog<T>(props: DialogProps<T>) {
         <dialog ref={ref} onClose={onClose}>
             <div onClick={handleClickContent} className="flex flex-col gap-4 p-4">
                 <p>{text}</p>
-                <div className="flex justify-between">{buttons}</div>
+                <div className="flex justify-around">{buttons}</div>
             </div>
         </dialog>
     );
