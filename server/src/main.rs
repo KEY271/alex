@@ -22,6 +22,17 @@ async fn get_board(State(board): State<Arc<Mutex<Board>>>) -> String {
 }
 
 #[derive(Deserialize)]
+struct BoardMfen {
+    mfen: String,
+}
+
+async fn post_board(State(board): State<Arc<Mutex<Board>>>, Json(mfen): Json<BoardMfen>) {
+    println!("POST: /api/board; {}", mfen.mfen);
+    let mut board = board.lock().unwrap();
+    *board = Board::from_str(&mfen.mfen).unwrap();
+}
+
+#[derive(Deserialize)]
 struct Move {
     mfen: String,
 }
@@ -38,6 +49,7 @@ async fn main() {
     let args: Vec<String> = env::args().collect();
     let mut app = Router::new()
         .route("/api/board", get(get_board))
+        .route("/api/board", post(post_board))
         .route("/api/move", post(post_move));
     if !args.contains(&"--server-only".to_string()) {
         let static_dir = ServeDir::new("static");
