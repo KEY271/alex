@@ -149,6 +149,53 @@ export class Position {
         }
     }
 
+    mfen(): string {
+        let res = "";
+        for (let iy = 7; iy >= 0; iy--) {
+            for (let ix = 0; ix < 8; ) {
+                const [pt, side] = this.piece(ix, iy);
+                if (side == Side.None) {
+                    const x = ix;
+                    ix += 1;
+                    while (ix < 8) {
+                        if (this.piece(ix, iy)[1] != Side.None) {
+                            break;
+                        }
+                        ix += 1;
+                    }
+                    res += (ix - x).toString();
+                    continue;
+                }
+                res += this.piece_mfen(pt, side);
+                ix += 1;
+            }
+            if (iy > 0) {
+                res += "/";
+            }
+        }
+        res += " ";
+        res += this.side == Side.Black ? "b" : "w";
+        res += " ";
+        let hand = "";
+        for (const [pt, count] of this.hand_black) {
+            hand += this.piece_mfen(pt, Side.Black);
+            if (count >= 2) {
+                hand += count.toString();
+            }
+        }
+        for (const [pt, count] of this.hand_white) {
+            hand += this.piece_mfen(pt, Side.White);
+            if (count >= 2) {
+                hand += count.toString();
+            }
+        }
+        if (hand == "") {
+            hand = "-";
+        }
+        res += hand;
+        return res;
+    }
+
     piece_mfen(pt: PieceType, side: Side) {
         let name = "";
         switch (pt) {

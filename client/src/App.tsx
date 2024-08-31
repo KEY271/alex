@@ -27,6 +27,20 @@ function App() {
         });
     }, []);
 
+    const getBestMove = useCallback(() => {
+        fetch("http://127.0.0.1:3001/api/bestmove", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ mfen: board.mfen() })
+        })
+            .then((res) => res.text())
+            .then((data) => {
+                alert(data);
+            });
+    }, [board]);
+
     return (
         <div className="grid h-full grid-cols-[360px_1fr] sm:grid-cols-[520px_1fr]">
             <div className="flex h-full items-center justify-center border-r border-black">
@@ -37,6 +51,11 @@ function App() {
                     onClick={reset}
                     className="h-12 w-24 border border-black bg-gray-200 p-2 hover:bg-[lightsalmon]">
                     リセット
+                </button>
+                <button
+                    onClick={getBestMove}
+                    className="h-12 w-24 border border-black bg-gray-200 p-2 hover:bg-[lightsalmon]">
+                    最善手
                 </button>
             </div>
         </div>

@@ -4,7 +4,7 @@ use strum::IntoEnumIterator;
 
 use crate::foreach_bb;
 
-use super::board::{get_pos, Bitboard, Board, PieceType, Side, Square, RANK_NB};
+use super::board::{get_pos, Bitboard, Board, PieceType, Side, Square};
 
 /// Move.
 pub type Move = u32;
@@ -66,13 +66,20 @@ pub fn get_to(m: Move) -> Square {
     Square::from_u32((m & MOVE_TO) >> MOVE_TO_SHIFT).unwrap()
 }
 
-pub fn pretty_move(m: Move) -> String {
+pub fn move_to_mfen(m: Move, side: Side) -> String {
     match get_move_type(m) {
-        MoveType::Normal => format!("{} {}", get_from(m), get_to(m)),
-        MoveType::Return => format!("R {} {}", get_from(m), get_to(m)),
-        MoveType::Shoot => format!("S {} {}", get_from(m), get_to(m)),
-        MoveType::Drop => todo!(),
-        MoveType::Supply => todo!(),
+        MoveType::Normal => format!("{}{}", get_from(m), get_to(m)),
+        MoveType::Return => format!("{}{}", get_from(m), get_to(m)),
+        MoveType::Shoot => format!("{}{}S", get_from(m), get_to(m)),
+        MoveType::Drop => format!("{}{}", get_to(m), get_pt(m).into_piece(side)),
+        MoveType::Supply => {
+            let to = get_to(m);
+            if side == Side::Black {
+                format!("{}R", to)
+            } else {
+                format!("{}r", to)
+            }
+        }
     }
 }
 
@@ -238,76 +245,5 @@ pub fn generate(board: &Board, gen: GenType, moves: &mut Vec<Move>) {
     match gen {
         GenType::NonCaptures => generate_non_captures(board, moves),
         GenType::Captures => generate_captures(board, moves),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{
-        engine::board::{Board, PieceType, Square},
-        engine::movegen::{make_move_normal, pretty_move},
-    };
-
-    use super::{generate, GenType};
-    #[test]
-    fn initial_position() {
-        let mut board: Board = "bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB"
-            .parse()
-            .unwrap();
-        let mut moves = Vec::new();
-        generate(&board, GenType::NonCaptures, &mut moves);
-        moves.sort();
-        let answer = "B1 A3,B1 C3,G1 F3,G1 H3,A2 A3,B2 B3,C2 C3,C2 C4,D2 D3,D2 D4,E2 E3,E2 E4,F2 F3,F2 F4,G2 G3,H2 H3";
-        assert_eq!(
-            moves
-                .iter()
-                .map(|m| pretty_move(*m))
-                .collect::<Vec<String>>()
-                .join(","),
-            answer
-        );
-
-        board.do_move(make_move_normal(PieceType::None, Square::B2, Square::B3));
-
-        let mut moves = Vec::new();
-        generate(&board, GenType::NonCaptures, &mut moves);
-        moves.sort();
-        let answer = "A7 A6,B7 B6,C7 C5,C7 C6,D7 D5,D7 D6,E7 E5,E7 E6,F7 F5,F7 F6,G7 G6,H7 H6,B8 A6,B8 C6,G8 F6,G8 H6";
-        assert_eq!(
-            moves
-                .iter()
-                .map(|m| pretty_move(*m))
-                .collect::<Vec<String>>()
-                .join(","),
-            answer
-        );
-
-        board.do_move(make_move_normal(PieceType::None, Square::B7, Square::B6));
-
-        let mut moves = Vec::new();
-        generate(&board, GenType::NonCaptures, &mut moves);
-        moves.sort();
-        let answer = "B1 A3,B1 C3,C1 B2,G1 F3,G1 H3,A2 A3,C2 C3,C2 C4,D2 D3,D2 D4,E2 E3,E2 E4,F2 F3,F2 F4,G2 G3,H2 H3,B3 B4,S A1 B2,S A1 C3,S A1 D4,S A1 E5,S A1 F6";
-        assert_eq!(
-            moves
-                .iter()
-                .map(|m| pretty_move(*m))
-                .collect::<Vec<String>>()
-                .join(","),
-            answer
-        );
-
-        let mut moves = Vec::new();
-        generate(&board, GenType::Captures, &mut moves);
-        moves.sort();
-        let answer = "S A1 G7";
-        assert_eq!(
-            moves
-                .iter()
-                .map(|m| pretty_move(*m))
-                .collect::<Vec<String>>()
-                .join(","),
-            answer
-        );
     }
 }

@@ -10,7 +10,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use engine::board::Board;
+use engine::{board::Board, search::bestmove};
 use serde::Deserialize;
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
@@ -33,15 +33,21 @@ async fn post_board(State(board): State<Arc<Mutex<Board>>>, Json(mfen): Json<Boa
 }
 
 #[derive(Deserialize)]
-struct Move {
+struct MoveMfen {
     mfen: String,
 }
 
-async fn post_move(State(board): State<Arc<Mutex<Board>>>, Json(m): Json<Move>) {
+async fn post_move(State(board): State<Arc<Mutex<Board>>>, Json(m): Json<MoveMfen>) {
     println!("POST: /api/move; {}", m.mfen);
     let mut board = board.lock().unwrap();
     let m = board.read_move(m.mfen).unwrap();
     board.do_move(m);
+}
+
+async fn post_bestmove(Json(mfen): Json<BoardMfen>) -> String {
+    println!("POST: /api/bestmove; {}", mfen.mfen);
+    let mut board = Board::from_str(&mfen.mfen).unwrap();
+    bestmove(&mut board)
 }
 
 #[tokio::main]
@@ -50,7 +56,8 @@ async fn main() {
     let mut app = Router::new()
         .route("/api/board", get(get_board))
         .route("/api/board", post(post_board))
-        .route("/api/move", post(post_move));
+        .route("/api/move", post(post_move))
+        .route("/api/bestmove", post(post_bestmove));
     if !args.contains(&"--server-only".to_string()) {
         let static_dir = ServeDir::new("static");
         app = app.nest_service("/", static_dir);
