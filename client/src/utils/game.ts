@@ -149,33 +149,6 @@ export class Position {
         }
     }
 
-    piecename(pt: PieceType) {
-        switch (pt) {
-            case PieceType.None:
-                return "";
-            case PieceType.Light:
-                return "歩";
-            case PieceType.Heavy:
-                return "重";
-            case PieceType.King:
-                return "玉";
-            case PieceType.Prince:
-                return "子";
-            case PieceType.General:
-                return "将";
-            case PieceType.Knight:
-                return "騎";
-            case PieceType.Arrow:
-                return "➶";
-            case PieceType.Archer0:
-                return "弓0";
-            case PieceType.Archer1:
-                return "弓1";
-            case PieceType.Archer2:
-                return "弓2";
-        }
-    }
-
     piece_mfen(pt: PieceType, side: Side) {
         let name = "";
         switch (pt) {

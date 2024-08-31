@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PieceType, Position, Side } from "../utils/game";
 import Dialog from "./Dialog";
+import Piece from "./Piece";
 
 type BoardProps = {
     position: Position;
@@ -157,7 +158,11 @@ function Board(props: BoardProps) {
                 }
             };
             return (
-                <div key={j} className="box-border border-b-2 border-r-2 border-black bg-[bisque]">
+                <div
+                    key={j}
+                    data-border={iy == 3 || iy == 5}
+                    className="box-border border-b-2 border-r-2 border-black bg-[bisque]
+                        data-[border=true]:border-b-red-600">
                     <div
                         onClick={onClick}
                         data-rev={side == Side.White}
@@ -165,10 +170,10 @@ function Board(props: BoardProps) {
                         data-selected={state.selected == j}
                         data-movable={state.movables.includes(j) || puttable}
                         data-history={state.history.includes(j)}
-                        className="flex h-full w-full select-none items-center justify-center border-red-500 text-[20px]
+                        className="flex h-full w-full select-none items-center justify-center border-red-500
                             data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
-                            data-[history=true]:bg-[lightsalmon] data-[movable=true]:bg-[darksalmon] sm:text-[30px]">
-                        {position.piecename(pt)}
+                            data-[history=true]:bg-[lightsalmon] data-[movable=true]:bg-[darksalmon]">
+                        {pt == PieceType.None ? <></> : <Piece pt={pt} />}
                     </div>
                 </div>
             );
@@ -191,7 +196,6 @@ function Board(props: BoardProps) {
         });
     const hand = (side: Side) => (v: [PieceType, number], i: number) => {
         const [pt, n] = v;
-        const name = position.piecename(pt)[0];
         const count = n == 1 ? "" : n.toString();
         const onClick = () => {
             if (position.side == side) {
@@ -202,14 +206,15 @@ function Board(props: BoardProps) {
             <div
                 key={i}
                 data-turn={position.side == side}
-                className="flex select-none text-[20px] data-[turn=true]:cursor-pointer sm:text-[30px]"
+                className="flex select-none data-[turn=true]:cursor-pointer"
                 onClick={onClick}>
                 <div
                     data-selected={side == state.side && i == state.hand}
-                    className="border-2 border-transparent data-[selected=true]:border-red-500">
-                    {name}
+                    className="flex h-[40px] w-[40px] items-center justify-center border-2 border-transparent
+                        data-[selected=true]:border-red-500 sm:h-[60px] sm:w-[60px]">
+                    {pt == PieceType.None ? <></> : <Piece pt={pt} />}
                 </div>
-                {count}
+                <div className="ml-[-4px] text-xs sm:ml-[-8px] sm:text-base">{count}</div>
             </div>
         );
     };
@@ -265,7 +270,7 @@ function Board(props: BoardProps) {
                     className="w-full select-none p-2 data-[turn=true]:text-red-600 data-[turn=true]:underline">
                     先手
                 </div>
-                <div className="flex h-[40px] w-full gap-4 text-[20px]">{hand_black}</div>
+                <div className="flex h-[40px] w-full gap-4 text-xl">{hand_black}</div>
             </div>
         </>
     );
