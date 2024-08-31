@@ -4,51 +4,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use api::{get_board, post_bestmove, post_board, post_move};
 use axum::{
-    extract::State,
     http::{header::CONTENT_TYPE, HeaderValue},
     routing::{get, post},
-    Json, Router,
+    Router,
 };
-use engine::{board::Board, search::bestmove};
-use serde::Deserialize;
+use engine::board::Board;
+
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
+mod api;
 mod engine;
-
-async fn get_board(State(board): State<Arc<Mutex<Board>>>) -> String {
-    println!("GET: /api/board");
-    board.lock().unwrap().to_string()
-}
-
-#[derive(Deserialize)]
-struct BoardMfen {
-    mfen: String,
-}
-
-async fn post_board(State(board): State<Arc<Mutex<Board>>>, Json(mfen): Json<BoardMfen>) {
-    println!("POST: /api/board; {}", mfen.mfen);
-    let mut board = board.lock().unwrap();
-    *board = Board::from_str(&mfen.mfen).unwrap();
-}
-
-#[derive(Deserialize)]
-struct MoveMfen {
-    mfen: String,
-}
-
-async fn post_move(State(board): State<Arc<Mutex<Board>>>, Json(m): Json<MoveMfen>) {
-    println!("POST: /api/move; {}", m.mfen);
-    let mut board = board.lock().unwrap();
-    let m = board.read_move(m.mfen).unwrap();
-    board.do_move(m);
-}
-
-async fn post_bestmove(Json(mfen): Json<BoardMfen>) -> String {
-    println!("POST: /api/bestmove; {}", mfen.mfen);
-    let mut board = Board::from_str(&mfen.mfen).unwrap();
-    bestmove(&mut board)
-}
 
 #[tokio::main]
 async fn main() {
