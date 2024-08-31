@@ -314,12 +314,12 @@ export class Position {
                         }
                         for (let j = 1; j < 8; j++) {
                             const x = ix + dx * j;
-                            const y = ix + dy * j;
+                            const y = iy + dy * j;
                             if (!isNone(x, y)) {
                                 if (x < 0 || 8 <= x) break;
                                 if (y < 0 || 8 <= y) break;
-                                const pt = this.board[y * 8 + x][0];
-                                if (pt == PieceType.Archer0 || pt == PieceType.Archer1) {
+                                const [pt2, side2] = this.board[y * 8 + x];
+                                if (side == side2 && (pt2 == PieceType.Archer0 || pt2 == PieceType.Archer1)) {
                                     movables.push(index(x, y));
                                 }
                                 break;
