@@ -79,7 +79,7 @@ macro_rules! for_pos {
 #[repr(usize)]
 #[rustfmt::skip]
 pub enum PieceType {
-    None, Light, Heavy, King1, King2, Prince1, Prince2, General, Knight, Arrow, Archer0, Archer1, Archer2,
+    None, Light, Heavy, King, Prince, General, Knight, Arrow, Archer0, Archer1, Archer2,
 }
 
 /// Count of piece types.
@@ -88,19 +88,17 @@ pub const PIECE_TYPE_NB: usize = 13;
 impl fmt::Display for PieceType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            PieceType::None => write!(f, ". "),
-            PieceType::Light => write!(f, "L "),
-            PieceType::Heavy => write!(f, "H "),
-            PieceType::King1 => write!(f, "K "),
-            PieceType::King2 => write!(f, "K'"),
-            PieceType::Prince1 => write!(f, "P "),
-            PieceType::Prince2 => write!(f, "P'"),
-            PieceType::General => write!(f, "G "),
-            PieceType::Knight => write!(f, "N "),
-            PieceType::Arrow => write!(f, "R "),
-            PieceType::Archer0 => write!(f, "A0"),
-            PieceType::Archer1 => write!(f, "A1"),
-            PieceType::Archer2 => write!(f, "A2"),
+            PieceType::None => write!(f, "."),
+            PieceType::Light => write!(f, "L"),
+            PieceType::Heavy => write!(f, "H"),
+            PieceType::King => write!(f, "K"),
+            PieceType::Prince => write!(f, "P"),
+            PieceType::General => write!(f, "G"),
+            PieceType::Knight => write!(f, "N"),
+            PieceType::Arrow => write!(f, "R"),
+            PieceType::Archer0 => write!(f, "A"),
+            PieceType::Archer1 => write!(f, "B"),
+            PieceType::Archer2 => write!(f, "C"),
         }
     }
 }
@@ -111,9 +109,9 @@ impl fmt::Display for PieceType {
 #[rustfmt::skip]
 pub enum Piece {
     None,
-    BLight, BHeavy, BKing1, BKing2, BPrince1, BPrince2, BGeneral, BKnight, BArrow, BArcher0, BArcher1, BArcher2,
-    PAD1, PAD2, PAD3, PAD4,
-    WLight, WHeavy, WKing1, WKing2, WPrince1, WPrince2, WGeneral, WKnight, WArrow, WArcher0, WArcher1, WArcher2,
+    BLight, BHeavy, BKing, BPrince, BGeneral, BKnight, BArrow, BArcher0, BArcher1, BArcher2,
+    PAD1, PAD2, PAD3, PAD4, PAD5, PAD6,
+    WLight, WHeavy, WKing, WPrince, WGeneral, WKnight, WArrow, WArcher0, WArcher1, WArcher2,
 }
 
 /// Count of pieces.
@@ -125,10 +123,8 @@ impl fmt::Display for Piece {
             Piece::None => write!(f, "."),
             Piece::BLight => write!(f, "L"),
             Piece::BHeavy => write!(f, "H"),
-            Piece::BKing1 => write!(f, "K"),
-            Piece::BKing2 => write!(f, "K"),
-            Piece::BPrince1 => write!(f, "P"),
-            Piece::BPrince2 => write!(f, "P"),
+            Piece::BKing => write!(f, "K"),
+            Piece::BPrince => write!(f, "P"),
             Piece::BGeneral => write!(f, "G"),
             Piece::BKnight => write!(f, "N"),
             Piece::BArrow => write!(f, "R"),
@@ -139,12 +135,12 @@ impl fmt::Display for Piece {
             Piece::PAD2 => write!(f, "*"),
             Piece::PAD3 => write!(f, "*"),
             Piece::PAD4 => write!(f, "*"),
+            Piece::PAD5 => write!(f, "*"),
+            Piece::PAD6 => write!(f, "*"),
             Piece::WLight => write!(f, "l"),
             Piece::WHeavy => write!(f, "h"),
-            Piece::WKing1 => write!(f, "k"),
-            Piece::WKing2 => write!(f, "k"),
-            Piece::WPrince1 => write!(f, "p"),
-            Piece::WPrince2 => write!(f, "p"),
+            Piece::WKing => write!(f, "k"),
+            Piece::WPrince => write!(f, "p"),
             Piece::WGeneral => write!(f, "g"),
             Piece::WKnight => write!(f, "n"),
             Piece::WArrow => write!(f, "r"),
@@ -191,8 +187,8 @@ impl PieceType {
         match mfen {
             b'L' | b'l' => PieceType::Light,
             b'H' | b'h' => PieceType::Heavy,
-            b'K' | b'k' => PieceType::King1,
-            b'P' | b'p' => PieceType::Prince1,
+            b'K' | b'k' => PieceType::King,
+            b'P' | b'p' => PieceType::Prince,
             b'G' | b'g' => PieceType::General,
             b'N' | b'n' => PieceType::Knight,
             b'R' | b'r' => PieceType::Arrow,
@@ -420,7 +416,7 @@ impl Board {
                                 change_bit!(bb, j);
                             }
                         }
-                        PieceType::King1 | PieceType::King2 => {
+                        PieceType::King => {
                             if ix.abs_diff(jx) <= 1
                                 && iy.abs_diff(jy) <= 1
                                 && !(ix == jx && iy == jy)
@@ -428,7 +424,7 @@ impl Board {
                                 change_bit!(bb, j);
                             }
                         }
-                        PieceType::Prince1 | PieceType::Prince2 => {
+                        PieceType::Prince => {
                             if ix == jx && iy + 1 == jy
                                 || ix.abs_diff(jx) == 1 && iy.abs_diff(jy) == 1
                             {
@@ -776,8 +772,8 @@ impl Piece {
         let p = match c {
             'L' => Piece::BLight,
             'H' => Piece::BHeavy,
-            'K' => Piece::BKing2,
-            'P' => Piece::BPrince1,
+            'K' => Piece::BKing,
+            'P' => Piece::BPrince,
             'G' => Piece::BGeneral,
             'N' => Piece::BKnight,
             'R' => Piece::BArrow,
@@ -786,15 +782,15 @@ impl Piece {
             'C' => Piece::BArcher2,
             'l' => Piece::WLight,
             'h' => Piece::WHeavy,
-            'k' => Piece::WKing2,
-            'p' => Piece::WPrince1,
+            'k' => Piece::WKing,
+            'p' => Piece::WPrince,
             'g' => Piece::WGeneral,
             'n' => Piece::WKnight,
             'r' => Piece::WArrow,
             'a' => Piece::WArcher0,
             'b' => Piece::WArcher1,
             'c' => Piece::WArcher2,
-            _ => return Err(format!("invalid char: {}.", c))
+            _ => return Err(format!("invalid char: {}.", c)),
         };
         Ok(p)
     }
@@ -823,7 +819,7 @@ impl FromStr for Board {
                     }
                     iy -= 1;
                     continue;
-                },
+                }
                 c => {
                     if let Ok(p) = Piece::from_char(c) {
                         p
