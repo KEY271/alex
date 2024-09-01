@@ -87,7 +87,9 @@ impl MovePicker {
                     self.stage = Stage::NonCaptures;
                 }
                 Stage::NonCaptures => {
-                    if let Some(mv) = select_best(self.moves.slice_mut(0), &mut self.cur) {
+                    if self.cur < self.moves.size {
+                        let mv = self.moves.slice(0)[self.cur].mv;
+                        self.cur += 1;
                         return Some(mv);
                     }
                     break;

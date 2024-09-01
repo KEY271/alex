@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Board from "./components/Board";
 import { Position } from "./utils/game";
 
@@ -15,7 +15,7 @@ function App() {
             });
     }, [count]);
 
-    const reset = useCallback(() => {
+    const reset = () => {
         fetch("http://127.0.0.1:3001/api/board", {
             method: "POST",
             headers: {
@@ -25,9 +25,9 @@ function App() {
         }).then(() => {
             setCount((c) => c + 1);
         });
-    }, []);
+    };
 
-    const getBestMove = useCallback(() => {
+    const getBestMove = () => {
         fetch("http://127.0.0.1:3001/api/bestmove", {
             method: "POST",
             headers: {
@@ -37,9 +37,18 @@ function App() {
         })
             .then((res) => res.text())
             .then((data) => {
-                alert(data);
+                console.log(data);
+                fetch("http://127.0.0.1:3001/api/move", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ mfen: data })
+                }).then(() => {
+                    setCount((c) => c + 1);
+                });
             });
-    }, [board]);
+    };
 
     return (
         <div className="grid h-full grid-cols-[360px_1fr] sm:grid-cols-[520px_1fr]">

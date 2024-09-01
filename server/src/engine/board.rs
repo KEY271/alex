@@ -552,7 +552,7 @@ impl FromStr for Board {
             while i < hand.len() {
                 let p = Piece::from_char(hand[i])?;
                 i += 1;
-                if i >= hand.len() || Piece::from_char(hand[i]).is_err() {
+                if i >= hand.len() || Piece::from_char(hand[i]).is_ok() {
                     board.add_hand(p.side(), p.pt());
                     break;
                 }
@@ -560,6 +560,7 @@ impl FromStr for Board {
                 if count <= 1 {
                     return Err(format!("invalid char: {}.", hand[i]));
                 }
+                i += 1;
                 for _ in 0..count {
                     board.add_hand(p.side(), p.pt());
                 }

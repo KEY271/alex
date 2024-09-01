@@ -39,5 +39,6 @@ pub async fn post_move(State(board): State<Arc<Mutex<Board>>>, Json(m): Json<Mov
 pub async fn post_bestmove(Json(mfen): Json<BoardMfen>) -> String {
     println!("POST: /api/bestmove; {}", mfen.mfen);
     let mut board = Board::from_str(&mfen.mfen).unwrap();
+    println!("{}", board.to_string());
     bestmove(&mut board)
 }
