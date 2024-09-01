@@ -1,6 +1,7 @@
 use super::{
     board::Board,
-    movegen::{generate, move_to_mfen, GenType},
+    movegen::{generate, GenType},
+    util::move_to_mfen,
 };
 
 pub fn bestmove(board: &mut Board) -> String {

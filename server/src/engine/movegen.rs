@@ -1,112 +1,17 @@
-use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 
-use crate::foreach_bb;
+use crate::{
+    engine::util::{
+        make_move_drop, make_move_normal, make_move_return, make_move_shoot, make_move_supply,
+    },
+    foreach_bb,
+};
 
-use super::board::{get_pos, Bitboard, Board, PieceType, Side, Square};
-
-/// Move.
-pub type Move = u32;
-
-/// Type of the move.
-#[derive(FromPrimitive, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-#[repr(usize)]
-pub enum MoveType {
-    /// Move a piece.
-    Normal,
-    /// Return an arrow to an archer.
-    Return,
-    /// Shoot an arrow.
-    Shoot,
-    /// Drop a piece from hand.
-    Drop,
-    /// Supply an arrow to an archer.
-    Supply,
-}
-
-/// Mask of a captured piece.
-const MOVE_CAP: u32 = 0b1111_0_000_000000_000000;
-const MOVE_CAP_SHIFT: u32 = 16;
-/// Mask of a demise flag.
-pub const MOVE_DEMISE: u32 = 0b0000_1_000_000000_000000;
-/// Mask of a move type.
-const MOVE_TYPE: u32 = 0b0000_0_111_000000_000000;
-const MOVE_TYPE_SHIFT: u32 = 12;
-/// Mask of a square the piece move from.
-/// Or the piece type if the move type is drop.
-const MOVE_FROM: u32 = 0b0000_0_000_111111_000000;
-const MOVE_FROM_SHIFT: u32 = 6;
-/// Mask of a square the piece move to.
-const MOVE_TO: u32 = 0b0000_0_000_000000_111111;
-const MOVE_TO_SHIFT: u32 = 0;
-
-pub fn get_capture(m: Move) -> PieceType {
-    PieceType::from_u32((m & MOVE_CAP) >> MOVE_CAP_SHIFT).unwrap()
-}
-
-pub fn is_demise(m: Move) -> bool {
-    m & MOVE_DEMISE != 0
-}
-
-pub fn get_move_type(m: Move) -> MoveType {
-    MoveType::from_u32((m & MOVE_TYPE) >> MOVE_TYPE_SHIFT).unwrap()
-}
-
-pub fn get_from(m: Move) -> Square {
-    Square::from_u32((m & MOVE_FROM) >> MOVE_FROM_SHIFT).unwrap()
-}
-
-pub fn get_pt(m: Move) -> PieceType {
-    PieceType::from_u32((m & MOVE_FROM) >> MOVE_FROM_SHIFT).unwrap()
-}
-
-pub fn get_to(m: Move) -> Square {
-    Square::from_u32((m & MOVE_TO) >> MOVE_TO_SHIFT).unwrap()
-}
-
-pub fn move_to_mfen(m: Move, side: Side) -> String {
-    match get_move_type(m) {
-        MoveType::Normal => format!("{}{}", get_from(m), get_to(m)),
-        MoveType::Return => format!("{}{}", get_from(m), get_to(m)),
-        MoveType::Shoot => format!("{}{}S", get_from(m), get_to(m)),
-        MoveType::Drop => format!("{}{}", get_to(m), get_pt(m).into_piece(side)),
-        MoveType::Supply => {
-            let to = get_to(m);
-            if side == Side::Black {
-                format!("{}R", to)
-            } else {
-                format!("{}r", to)
-            }
-        }
-    }
-}
-
-pub fn make_move_normal(cap: PieceType, from: Square, to: Square) -> Move {
-    ((cap as u32) << MOVE_CAP_SHIFT)
-        + ((MoveType::Normal as u32) << MOVE_TYPE_SHIFT)
-        + ((from as u32) << MOVE_FROM_SHIFT)
-        + ((to as u32) << MOVE_TO_SHIFT)
-}
-pub fn make_move_return(from: Square, to: Square) -> Move {
-    ((MoveType::Return as u32) << MOVE_TYPE_SHIFT)
-        + ((from as u32) << MOVE_FROM_SHIFT)
-        + ((to as u32) << MOVE_TO_SHIFT)
-}
-pub fn make_move_shoot(cap: PieceType, from: Square, to: Square) -> Move {
-    ((cap as u32) << MOVE_CAP_SHIFT)
-        + ((MoveType::Shoot as u32) << MOVE_TYPE_SHIFT)
-        + ((from as u32) << MOVE_FROM_SHIFT)
-        + ((to as u32) << MOVE_TO_SHIFT)
-}
-pub fn make_move_drop(pt: PieceType, to: Square) -> Move {
-    ((MoveType::Drop as u32) << MOVE_TYPE_SHIFT)
-        + ((pt as u32) << MOVE_FROM_SHIFT)
-        + ((to as u32) << MOVE_TO_SHIFT)
-}
-pub fn make_move_supply(to: Square) -> Move {
-    ((MoveType::Supply as u32) << MOVE_TYPE_SHIFT) + ((to as u32) << MOVE_TO_SHIFT)
-}
+use super::{
+    board::Board,
+    util::{Bitboard, Move, PieceType, Side, Square},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum GenType {
