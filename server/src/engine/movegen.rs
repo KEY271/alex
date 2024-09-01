@@ -39,6 +39,10 @@ impl MoveList {
         self.size += 1;
     }
 
+    pub fn at(&self, index: usize) -> ExtMove {
+        unsafe { self.moves.get_unchecked(index).assume_init_read() }
+    }
+
     pub fn slice(&self, begin: usize) -> &[ExtMove] {
         unsafe {
             std::slice::from_raw_parts(self.moves.get_unchecked(begin).as_ptr(), self.size - begin)
@@ -60,6 +64,8 @@ pub enum GenType {
     NonCaptures,
     /// Moves with capturing.
     Captures,
+    /// All moves.
+    All,
 }
 
 impl MoveList {
@@ -189,6 +195,10 @@ impl MoveList {
         match gen {
             GenType::NonCaptures => self.generate_non_captures(board),
             GenType::Captures => self.generate_captures(board),
+            GenType::All => {
+                self.generate_captures(board);
+                self.generate_non_captures(board);
+            }
         }
     }
 }

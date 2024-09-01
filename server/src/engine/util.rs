@@ -279,7 +279,7 @@ pub fn pretty_bb(bb: Bitboard) -> String {
     output
 }
 
-fn bit(bb: Bitboard, i: usize) -> u64 {
+pub fn bit(bb: Bitboard, i: usize) -> u64 {
     (bb >> i) & 1
 }
 
@@ -452,3 +452,7 @@ impl PartialEq for ExtMove {
 }
 
 impl Eq for ExtMove {}
+
+pub type Value = i16;
+
+pub const VALUE_INF: i16 = 32001;

@@ -2,20 +2,18 @@ use num_traits::FromPrimitive;
 
 use super::{
     board::Board,
-    util::{PieceType, PIECE_TYPE_NB, SQUARE_NB},
+    util::{PieceType, Value, PIECE_TYPE_NB, SQUARE_NB},
 };
-
-pub type Value = i16;
 
 // Value of a piece.
 const PIECE_VALUES: [Value; PIECE_TYPE_NB] = [0, 100, 200, 800, 600, 400, 400, 400, 400, 800, 1200];
 
 // Value of an effect.
-const EFFECT: Value = 20;
+const EFFECT: Value = 10;
 // Value of an effect on ally.
-const OUR_EFFECT: Value = 5;
+const OUR_EFFECT: Value = 3;
 // Value of an effect on opponent.
-const OPP_EFFECT: Value = 40;
+const OPP_EFFECT: Value = 5;
 
 /// Returns a static evaluation of the board from the point of view of the side to move.
 pub fn eval(board: &Board) -> Value {

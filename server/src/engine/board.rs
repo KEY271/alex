@@ -21,7 +21,7 @@ use super::util::{
 pub const OCC_NB: usize = 64;
 
 /// Board.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Board {
     pub side: Side,
     /// Piece at the square.
@@ -199,6 +199,11 @@ impl Board {
         self.sides[Side::Black as usize] | self.sides[Side::White as usize]
     }
 
+    #[allow(dead_code)]
+    pub fn pieces_pt(&self, pt: PieceType) -> Bitboard {
+        self.boards[pt as usize]
+    }
+
     pub fn pieces_side(&self, side: Side) -> Bitboard {
         self.sides[side as usize]
     }
@@ -316,7 +321,6 @@ impl Board {
                     change_bit!(self.sides[cap.side() as usize], to as usize);
                     self.remove_effect(to, cap);
                     self.add_hand(side, cap.pt());
-                    self.pieces[side as usize][cap.pt() as usize] += 1;
                     self.pieces[!side as usize][cap.pt() as usize] -= 1;
                 }
 
@@ -368,7 +372,6 @@ impl Board {
                     change_bit!(self.sides[cap.side() as usize], to as usize);
                     self.remove_effect(to, cap);
                     self.add_hand(side, cap.pt());
-                    self.pieces[side as usize][cap.pt() as usize] += 1;
                     self.pieces[!side as usize][cap.pt() as usize] -= 1;
                 }
 
@@ -400,6 +403,7 @@ impl Board {
                 change_bit!(self.boards[pt as usize], to as usize);
                 self.grid[to as usize] = pt.into_piece(self.side);
                 self.add_effect(to, self.grid[to as usize]);
+                self.pieces[self.side as usize][pt as usize] += 1;
             }
             MoveType::Supply => {
                 self.remove_hand(self.side, PieceType::Arrow);
@@ -451,7 +455,6 @@ impl Board {
                     self.grid[to as usize] = cap_piece;
                     self.add_effect(to, cap_piece);
                     self.remove_hand(side, cap);
-                    self.pieces[side as usize][cap as usize] -= 1;
                     self.pieces[!side as usize][cap as usize] += 1;
                 }
 
@@ -493,7 +496,7 @@ impl Board {
             }
             MoveType::Shoot => {
                 let from = get_from(m);
-                let (pt, side) = self.grid[to as usize].split();
+                let (pt, side) = self.grid[from as usize].split();
                 let cap = get_capture(m);
 
                 // capture
@@ -505,7 +508,6 @@ impl Board {
                     self.grid[to as usize] = cap_piece;
                     self.add_effect(to, cap_piece);
                     self.remove_hand(side, cap);
-                    self.pieces[side as usize][cap as usize] -= 1;
                     self.pieces[!side as usize][cap as usize] += 1;
                 }
 
@@ -536,6 +538,7 @@ impl Board {
                 change_bit!(self.boards[pt as usize], to as usize);
                 self.remove_effect(to, self.grid[to as usize]);
                 self.grid[to as usize] = Piece::None;
+                self.pieces[side as usize][pt as usize] -= 1;
             }
             MoveType::Supply => {
                 self.add_hand(side, PieceType::Arrow);
