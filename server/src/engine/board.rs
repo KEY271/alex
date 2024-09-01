@@ -6,8 +6,8 @@ use strum::IntoEnumIterator;
 
 use crate::{
     change_bit,
-    engine::util::{flipped, get_from, get_pt, PieceType},
-    for_pos,
+    engine::util::{flipped, get_capture, get_from, get_pt, PieceType},
+    for_pos, foreach_bb,
 };
 
 use super::util::{
@@ -34,6 +34,10 @@ pub struct Board {
     hands: [Hand; SIDE_NB],
     /// Count of demise.
     demise: [usize; SIDE_NB],
+    /// Effect.
+    pub effects: [[usize; SQUARE_NB]; SIDE_NB],
+    /// Count of piece.
+    pub pieces: [[usize; PIECE_TYPE_NB]; SIDE_NB],
 
     /// Squares the piece can move to.
     pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
@@ -180,6 +184,8 @@ impl Board {
             sides: [0, 0],
             hands: [0, 0],
             demise: [0, 0],
+            effects: [[0; SQUARE_NB]; SIDE_NB],
+            pieces: [[0; PIECE_TYPE_NB]; SIDE_NB],
             diagonal_mask,
             anti_diagonal_mask,
             rank_mask,
@@ -247,6 +253,36 @@ impl Board {
             | self.anti_diagonal_attacks(occupied, sq)
     }
 
+    fn calculate_effects(&mut self) {
+        for i in 0..SQUARE_NB {
+            self.add_effect(Square::from_usize(i).unwrap(), self.grid[i]);
+        }
+    }
+
+    fn add_effect(&mut self, sq: Square, p: Piece) {
+        foreach_bb!(self.movable_sq[p as usize][sq as usize], sq2, {
+            self.effects[p.side() as usize][sq2 as usize] += 1;
+        });
+    }
+
+    fn remove_effect(&mut self, sq: Square, p: Piece) {
+        foreach_bb!(self.movable_sq[p as usize][sq as usize], sq2, {
+            self.effects[p.side() as usize][sq2 as usize] -= 1;
+        });
+    }
+
+    pub fn calculate_arrow_effect(&self, side: Side) -> [usize; SQUARE_NB] {
+        let mut effect = [0; SQUARE_NB];
+        let arrow: u64 = self.pieces_pt_side(PieceType::Archer1, side)
+            | self.pieces_pt_side(PieceType::Archer2, side);
+        foreach_bb!(arrow, sq, {
+            foreach_bb!(self.arrow_attacks(sq), sq2, {
+                effect[sq2 as usize] += 1;
+            });
+        });
+        effect
+    }
+
     pub fn count_hand(&self, side: Side, pt: PieceType) -> u32 {
         count_hand(self.hands[side as usize], pt)
     }
@@ -270,59 +306,92 @@ impl Board {
         match get_move_type(m) {
             MoveType::Normal => {
                 let from = get_from(m);
-                let (pt, side) = self.grid[from as usize].split();
-                let pt2 = self.grid[to as usize].pt();
-                if pt2 != PieceType::None {
-                    self.add_hand(side, pt2);
+                let p = self.grid[from as usize];
+                let (pt, side) = p.split();
+                let cap = self.grid[to as usize];
+
+                // capture
+                if cap.pt() != PieceType::None {
+                    change_bit!(self.boards[cap.pt() as usize], to as usize);
+                    change_bit!(self.sides[cap.side() as usize], to as usize);
+                    self.remove_effect(to, cap);
+                    self.add_hand(side, cap.pt());
+                    self.pieces[side as usize][cap.pt() as usize] += 1;
+                    self.pieces[!side as usize][cap.pt() as usize] -= 1;
                 }
 
+                // to
                 change_bit!(self.boards[pt as usize], to as usize);
                 change_bit!(self.sides[side as usize], to as usize);
-                self.grid[to as usize] = self.grid[from as usize];
+                self.grid[to as usize] = p;
+                self.add_effect(to, p);
 
+                // from
                 change_bit!(self.boards[pt as usize], from as usize);
                 change_bit!(self.sides[side as usize], from as usize);
                 self.grid[from as usize] = Piece::None;
+                self.remove_effect(from, p);
             }
             MoveType::Return => {
                 let from = get_from(m);
                 let (pt, side) = self.grid[to as usize].split();
 
+                // arrow
                 change_bit!(self.boards[PieceType::Arrow as usize], from as usize);
                 change_bit!(self.sides[side as usize], from as usize);
                 self.grid[from as usize] = Piece::None;
+                self.pieces[side as usize][PieceType::Arrow as usize] -= 1;
 
+                // archer
                 if pt == PieceType::Archer0 {
                     change_bit!(self.boards[PieceType::Archer0 as usize], to as usize);
                     change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
                     self.grid[to as usize] = PieceType::Archer1.into_piece(side);
+                    self.pieces[side as usize][PieceType::Archer0 as usize] -= 1;
+                    self.pieces[side as usize][PieceType::Archer1 as usize] += 1;
                 } else if pt == PieceType::Archer1 {
                     change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
                     change_bit!(self.boards[PieceType::Archer2 as usize], to as usize);
                     self.grid[to as usize] = PieceType::Archer2.into_piece(side);
+                    self.pieces[side as usize][PieceType::Archer1 as usize] -= 1;
+                    self.pieces[side as usize][PieceType::Archer2 as usize] += 1;
                 }
             }
             MoveType::Shoot => {
                 let from = get_from(m);
                 let (pt, side) = self.grid[from as usize].split();
-                let pt2 = self.grid[to as usize].pt();
-                if pt2 != PieceType::None {
-                    self.add_hand(side, pt2);
+                let cap = self.grid[to as usize];
+
+                // capture
+                if cap.pt() != PieceType::None {
+                    change_bit!(self.boards[cap.pt() as usize], to as usize);
+                    change_bit!(self.sides[cap.side() as usize], to as usize);
+                    self.remove_effect(to, cap);
+                    self.add_hand(side, cap.pt());
+                    self.pieces[side as usize][cap.pt() as usize] += 1;
+                    self.pieces[!side as usize][cap.pt() as usize] -= 1;
                 }
 
+                // archer
                 if pt == PieceType::Archer1 {
                     change_bit!(self.boards[PieceType::Archer1 as usize], from as usize);
                     change_bit!(self.boards[PieceType::Archer0 as usize], from as usize);
                     self.grid[from as usize] = PieceType::Archer0.into_piece(side);
+                    self.pieces[side as usize][PieceType::Archer1 as usize] -= 1;
+                    self.pieces[side as usize][PieceType::Archer0 as usize] += 1;
                 } else if pt == PieceType::Archer2 {
                     change_bit!(self.boards[PieceType::Archer2 as usize], from as usize);
                     change_bit!(self.boards[PieceType::Archer1 as usize], from as usize);
                     self.grid[from as usize] = PieceType::Archer1.into_piece(side);
+                    self.pieces[side as usize][PieceType::Archer2 as usize] -= 1;
+                    self.pieces[side as usize][PieceType::Archer1 as usize] += 1;
                 }
 
+                // arrow
                 change_bit!(self.sides[side as usize], to as usize);
                 change_bit!(self.boards[PieceType::Arrow as usize], to as usize);
                 self.grid[to as usize] = PieceType::Arrow.into_piece(side);
+                self.pieces[side as usize][PieceType::Arrow as usize] += 1;
             }
             MoveType::Drop => {
                 let pt = get_pt(m);
@@ -330,6 +399,7 @@ impl Board {
                 change_bit!(self.sides[self.side as usize], to as usize);
                 change_bit!(self.boards[pt as usize], to as usize);
                 self.grid[to as usize] = pt.into_piece(self.side);
+                self.add_effect(to, self.grid[to as usize]);
             }
             MoveType::Supply => {
                 self.remove_hand(self.side, PieceType::Arrow);
@@ -338,15 +408,153 @@ impl Board {
                     change_bit!(self.boards[PieceType::Archer0 as usize], to as usize);
                     change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
                     self.grid[to as usize] = PieceType::Archer1.into_piece(self.side);
+                    self.pieces[self.side as usize][PieceType::Archer0 as usize] -= 1;
+                    self.pieces[self.side as usize][PieceType::Archer1 as usize] += 1;
                 } else if pt == PieceType::Archer1 {
                     change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
                     change_bit!(self.boards[PieceType::Archer2 as usize], to as usize);
                     self.grid[to as usize] = PieceType::Archer2.into_piece(self.side);
+                    self.pieces[self.side as usize][PieceType::Archer1 as usize] -= 1;
+                    self.pieces[self.side as usize][PieceType::Archer2 as usize] += 1;
                 }
             }
         }
 
         self.side = !self.side;
+    }
+
+    pub fn undo_move(&mut self, m: Move) {
+        if is_demise(m) {
+            self.demise[self.side as usize] -= 1;
+            if m == MOVE_DEMISE {
+                return;
+            }
+        }
+        // Change side in advance.
+        self.side = !self.side;
+
+        let to = get_to(m);
+        let side = self.side;
+        match get_move_type(m) {
+            MoveType::Normal => {
+                let p = self.grid[to as usize];
+                let pt = p.pt();
+                let from = get_from(m);
+                let cap = get_capture(m);
+
+                // capture
+                self.grid[to as usize] = Piece::None;
+                if cap != PieceType::None {
+                    change_bit!(self.boards[cap as usize], to as usize);
+                    change_bit!(self.sides[!side as usize], to as usize);
+                    let cap_piece = cap.into_piece(!side);
+                    self.grid[to as usize] = cap_piece;
+                    self.add_effect(to, cap_piece);
+                    self.remove_hand(side, cap);
+                    self.pieces[side as usize][cap as usize] -= 1;
+                    self.pieces[!side as usize][cap as usize] += 1;
+                }
+
+                // to
+                change_bit!(self.boards[pt as usize], to as usize);
+                change_bit!(self.sides[side as usize], to as usize);
+                self.remove_effect(to, p);
+
+                // from
+                change_bit!(self.boards[pt as usize], from as usize);
+                change_bit!(self.sides[side as usize], from as usize);
+                self.grid[from as usize] = p;
+                self.add_effect(from, p);
+            }
+            MoveType::Return => {
+                let from = get_from(m);
+                let (pt, side) = self.grid[to as usize].split();
+
+                // arrow
+                change_bit!(self.boards[PieceType::Arrow as usize], from as usize);
+                change_bit!(self.sides[side as usize], from as usize);
+                self.grid[from as usize] = PieceType::Arrow.into_piece(side);
+                self.pieces[side as usize][PieceType::Arrow as usize] += 1;
+
+                // archer
+                if pt == PieceType::Archer1 {
+                    change_bit!(self.boards[PieceType::Archer0 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
+                    self.pieces[side as usize][PieceType::Archer0 as usize] += 1;
+                    self.pieces[side as usize][PieceType::Archer1 as usize] -= 1;
+                    self.grid[to as usize] = PieceType::Archer0.into_piece(side);
+                } else if pt == PieceType::Archer2 {
+                    change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer2 as usize], to as usize);
+                    self.pieces[side as usize][PieceType::Archer1 as usize] += 1;
+                    self.pieces[side as usize][PieceType::Archer2 as usize] -= 1;
+                    self.grid[to as usize] = PieceType::Archer1.into_piece(side);
+                }
+            }
+            MoveType::Shoot => {
+                let from = get_from(m);
+                let (pt, side) = self.grid[to as usize].split();
+                let cap = get_capture(m);
+
+                // capture
+                self.grid[to as usize] = Piece::None;
+                if cap != PieceType::None {
+                    change_bit!(self.boards[cap as usize], to as usize);
+                    change_bit!(self.sides[!side as usize], to as usize);
+                    let cap_piece = cap.into_piece(!side);
+                    self.grid[to as usize] = cap_piece;
+                    self.add_effect(to, cap_piece);
+                    self.remove_hand(side, cap);
+                    self.pieces[side as usize][cap as usize] -= 1;
+                    self.pieces[!side as usize][cap as usize] += 1;
+                }
+
+                // archer
+                if pt == PieceType::Archer0 {
+                    change_bit!(self.boards[PieceType::Archer1 as usize], from as usize);
+                    change_bit!(self.boards[PieceType::Archer0 as usize], from as usize);
+                    self.grid[from as usize] = PieceType::Archer1.into_piece(side);
+                    self.pieces[side as usize][PieceType::Archer1 as usize] += 1;
+                    self.pieces[side as usize][PieceType::Archer0 as usize] -= 1;
+                } else if pt == PieceType::Archer1 {
+                    change_bit!(self.boards[PieceType::Archer2 as usize], from as usize);
+                    change_bit!(self.boards[PieceType::Archer1 as usize], from as usize);
+                    self.grid[from as usize] = PieceType::Archer2.into_piece(side);
+                    self.pieces[side as usize][PieceType::Archer2 as usize] += 1;
+                    self.pieces[side as usize][PieceType::Archer1 as usize] -= 1;
+                }
+
+                // arrow
+                change_bit!(self.sides[side as usize], to as usize);
+                change_bit!(self.boards[PieceType::Arrow as usize], to as usize);
+                self.pieces[side as usize][PieceType::Arrow as usize] -= 1;
+            }
+            MoveType::Drop => {
+                let pt = get_pt(m);
+                self.add_hand(side, pt);
+                change_bit!(self.sides[side as usize], to as usize);
+                change_bit!(self.boards[pt as usize], to as usize);
+                self.remove_effect(to, self.grid[to as usize]);
+                self.grid[to as usize] = Piece::None;
+            }
+            MoveType::Supply => {
+                self.add_hand(side, PieceType::Arrow);
+                let pt = self.grid[to as usize].pt();
+                if pt == PieceType::Archer1 {
+                    change_bit!(self.boards[PieceType::Archer0 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
+                    self.grid[to as usize] = PieceType::Archer0.into_piece(self.side);
+                    self.pieces[side as usize][PieceType::Archer0 as usize] += 1;
+                    self.pieces[side as usize][PieceType::Archer1 as usize] -= 1;
+                } else if pt == PieceType::Archer2 {
+                    change_bit!(self.boards[PieceType::Archer1 as usize], to as usize);
+                    change_bit!(self.boards[PieceType::Archer2 as usize], to as usize);
+                    self.grid[to as usize] = PieceType::Archer1.into_piece(self.side);
+                    self.pieces[side as usize][PieceType::Archer1 as usize] += 1;
+                    self.pieces[side as usize][PieceType::Archer2 as usize] -= 1;
+                }
+            }
+        }
     }
 
     /// Make a move from mfen.
@@ -532,6 +740,7 @@ impl FromStr for Board {
             let (pt, side) = piece.split();
             change_bit!(board.boards[pt as usize], i);
             change_bit!(board.sides[side as usize], i);
+            board.pieces[side as usize][pt as usize] += 1;
             ix += 1;
         }
         if ix != RANK_NB || iy != 0 {
@@ -578,6 +787,8 @@ impl FromStr for Board {
         } else {
             return Err(format!("invalid demise: {}", s[4]));
         }
+
+        board.calculate_effects();
 
         Ok(board)
     }
