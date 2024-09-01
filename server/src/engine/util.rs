@@ -77,7 +77,7 @@ pub enum PieceType {
     None, Light, Heavy, King, Prince, General, Knight, Arrow, Archer0, Archer1, Archer2,
 }
 /// Count of piece types.
-pub const PIECE_TYPE_NB: usize = 13;
+pub const PIECE_TYPE_NB: usize = 11;
 
 impl fmt::Display for PieceType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -108,7 +108,7 @@ pub enum Piece {
     WLight, WHeavy, WKing, WPrince, WGeneral, WKnight, WArrow, WArcher0, WArcher1, WArcher2,
 }
 /// Count of pieces.
-pub const PIECE_NB: usize = 29;
+pub const PIECE_NB: usize = 27;
 
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -426,3 +426,29 @@ pub fn make_move_drop(pt: PieceType, to: Square) -> Move {
 pub fn make_move_supply(to: Square) -> Move {
     ((MoveType::Supply as u32) << MOVE_TYPE_SHIFT) + ((to as u32) << MOVE_TO_SHIFT)
 }
+
+#[derive(Clone)]
+pub struct ExtMove {
+    pub mv: Move,
+    pub score: i32,
+}
+
+impl Ord for ExtMove {
+    fn cmp(&self, other: &ExtMove) -> std::cmp::Ordering {
+        self.score.cmp(&other.score)
+    }
+}
+
+impl PartialOrd for ExtMove {
+    fn partial_cmp(&self, other: &ExtMove) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for ExtMove {
+    fn eq(&self, other: &ExtMove) -> bool {
+        self.score == other.score
+    }
+}
+
+impl Eq for ExtMove {}
