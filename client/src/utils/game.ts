@@ -63,6 +63,7 @@ export class Position {
     side: Side;
     hand_black: [PieceType, number][];
     hand_white: [PieceType, number][];
+    demise: [number, number];
 
     constructor() {
         this.board = Array(64)
@@ -71,13 +72,14 @@ export class Position {
         this.side = Side.Black;
         this.hand_black = [];
         this.hand_white = [];
+        this.demise = [0, 0];
     }
 
     load(mfen: string): void {
         let ix = 0;
         let iy = 7;
         const s = mfen.split(" ");
-        if (s.length != 3) {
+        if (s.length != 5) {
             throw new Error("invalid mfen.");
         }
         for (const c of s[0]) {
@@ -147,6 +149,8 @@ export class Position {
                 }
             }
         }
+
+        this.demise = [parseInt(s[3]), parseInt(s[4])];
     }
 
     mfen(): string {
@@ -193,6 +197,10 @@ export class Position {
             hand = "-";
         }
         res += hand;
+        res += " ";
+        res += this.demise[0];
+        res += " ";
+        res += this.demise[1];
         return res;
     }
 

@@ -29,9 +29,25 @@ function Board(props: BoardProps) {
 
     const [isShootDialogOpen, setShootDialogOpen] = useState(false);
     const [shootAction, setShootAction] = useState<{ fn: (res: boolean) => () => void }>({ fn: () => () => {} });
-    const [isPutDialogOpen, setPutDialogOpen] = useState(false);
     const [putCandidates, setPutCandidates] = useState<[string, number][]>([]);
     const [putAction, setPutAction] = useState<{ fn: (res: number) => () => void }>({ fn: () => () => {} });
+    const [isDemiseDialogOpen, setDemiseDialogOpen] = useState(false);
+    const [isPutDialogOpen, setPutDialogOpen] = useState(false);
+    const demiseAction = (res: boolean) => () => {
+        setDemiseDialogOpen(false);
+        if (res) {
+            fetch("http://127.0.0.1:3001/api/move", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ mfen: "D" })
+            }).then(() => {
+                setState(new State(-1, [], [], Side.None, 0));
+                setCount((c) => c + 1);
+            });
+        }
+    };
 
     const [state, setState] = useState<State>(new State(-1, [], [], Side.None, 0));
 
@@ -157,6 +173,7 @@ function Board(props: BoardProps) {
                     setState(new State(j, movables, [], Side.None, 0));
                 }
             };
+            const demise = side == Side.None ? 0 : position.demise[side - 1];
             return (
                 <div
                     key={j}
@@ -173,7 +190,7 @@ function Board(props: BoardProps) {
                         className="flex h-full w-full select-none items-center justify-center border-red-500
                             data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
                             data-[history=true]:bg-[lightsalmon] data-[movable=true]:bg-[darksalmon]">
-                        {pt == PieceType.None ? <></> : <Piece pt={pt} />}
+                        {pt == PieceType.None ? <></> : <Piece pt={pt} demise={demise} />}
                     </div>
                 </div>
             );
@@ -212,7 +229,7 @@ function Board(props: BoardProps) {
                     data-selected={side == state.side && i == state.hand}
                     className="flex h-[40px] w-[40px] items-center justify-center border-2 border-transparent
                         data-[selected=true]:border-red-500 sm:h-[60px] sm:w-[60px]">
-                    {pt == PieceType.None ? <></> : <Piece pt={pt} />}
+                    {pt == PieceType.None ? <></> : <Piece pt={pt} demise={0} />}
                 </div>
                 <div className="ml-[-4px] text-xs sm:ml-[-8px] sm:text-base">{count}</div>
             </div>
@@ -220,6 +237,42 @@ function Board(props: BoardProps) {
     };
     const hand_black = position.hand_black.map(hand(Side.Black));
     const hand_white = position.hand_white.map(hand(Side.White));
+    const indicator = (side: Side) => {
+        let disabled = true;
+        if (position.side == side) {
+            const search = position.demise[side - 1] % 2 == 0 ? PieceType.Prince : PieceType.King;
+            for (let i = 0; i < 64; i++) {
+                const [pt, s] = position.piece_index(i);
+                if (s != side) {
+                    continue;
+                }
+                if (pt == search) {
+                    disabled = false;
+                    break;
+                }
+            }
+        }
+        return (
+            <div
+                data-rev={side == Side.White}
+                className="flex w-full select-none items-center justify-between gap-2 p-2 data-[rev=true]:rotate-180">
+                <div
+                    data-turn={position.side == side}
+                    className="data-[turn=true]:text-red-600 data-[turn=true]:underline">
+                    {side == Side.Black ? "先手" : "後手"}
+                </div>
+                <div>譲位回数: {position.demise[side - 1]}</div>
+                <button
+                    disabled={disabled}
+                    className="border border-black bg-gray-200 p-1 hover:[&:not([disabled])]:bg-[lightsalmon]"
+                    onClick={() => {
+                        setDemiseDialogOpen(true);
+                    }}>
+                    譲位
+                </button>
+            </div>
+        );
+    };
     return (
         <>
             <Dialog
@@ -243,14 +296,21 @@ function Board(props: BoardProps) {
                 candidates={putCandidates}
                 action={putAction.fn}
             />
+            <Dialog
+                text="本当に譲位しますか？"
+                isOpen={isDemiseDialogOpen}
+                onClose={() => {
+                    setDemiseDialogOpen(false);
+                }}
+                candidates={[
+                    ["はい", true],
+                    ["いいえ", false]
+                ]}
+                action={demiseAction}
+            />
             <div className="flex flex-col">
                 <div className="flex h-[40px] w-full rotate-180 gap-4">{hand_white}</div>
-                <div
-                    data-turn={position.side == Side.White}
-                    className="w-full rotate-180 select-none p-2 data-[turn=true]:text-red-600
-                        data-[turn=true]:underline">
-                    後手
-                </div>
+                {indicator(Side.White)}
                 <div
                     className="grid grid-cols-[20px_320px_20px] grid-rows-[20px_320px_20px]
                         sm:grid-cols-[20px_480px_20px] sm:grid-rows-[20px_480px_20px]">
@@ -265,11 +325,7 @@ function Board(props: BoardProps) {
                     <div className="col-[1] row-[2] flex flex-col-reverse">{rank}</div>
                     <div className="col-[3] row-[2] flex rotate-180 flex-col">{rank}</div>
                 </div>
-                <div
-                    data-turn={position.side == Side.Black}
-                    className="w-full select-none p-2 data-[turn=true]:text-red-600 data-[turn=true]:underline">
-                    先手
-                </div>
+                {indicator(Side.Black)}
                 <div className="flex h-[40px] w-full gap-4 text-xl">{hand_black}</div>
             </div>
         </>

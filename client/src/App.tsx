@@ -21,7 +21,7 @@ function App() {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ mfen: "bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b -" })
+            body: JSON.stringify({ mfen: "bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0" })
         }).then(() => {
             setCount((c) => c + 1);
         });

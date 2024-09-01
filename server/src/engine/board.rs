@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{fmt::Write, ops::Not, str::FromStr};
+use std::{fmt::Write, ops::Not, str::FromStr, usize};
 
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -7,8 +7,8 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use super::movegen::{
-    get_from, get_move_type, get_pt, get_to, make_move_drop, make_move_normal, make_move_return,
-    make_move_shoot, make_move_supply, Move, MoveType,
+    get_from, get_move_type, get_pt, get_to, is_demise, make_move_drop, make_move_normal,
+    make_move_return, make_move_shoot, make_move_supply, Move, MoveType, MOVE_DEMISE,
 };
 
 /// Square of the grid.
@@ -320,6 +320,8 @@ pub struct Board {
     sides: [Bitboard; SIDE_NB],
     /// Hands of sides.
     hands: [Hand; SIDE_NB],
+    /// Count of demise.
+    demise: [usize; SIDE_NB],
 
     /// Squares the piece can move to.
     pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
@@ -329,71 +331,6 @@ pub struct Board {
     rank_mask: [Bitboard; SQUARE_NB],
     fill_up_attacks: [[Bitboard; RANK_NB]; OCC_NB],
     a_file_attacks: [[Bitboard; RANK_NB]; OCC_NB],
-}
-
-impl fmt::Display for Board {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for iy in (0..RANK_NB).rev() {
-            let mut ix = 0;
-            while ix < RANK_NB {
-                let piece = self.grid[iy * RANK_NB + ix];
-                if piece == Piece::None {
-                    let x = ix;
-                    ix += 1;
-                    while ix < RANK_NB {
-                        if self.grid[iy * RANK_NB + ix] == Piece::None {
-                            ix += 1;
-                        } else {
-                            break;
-                        }
-                    }
-                    write!(f, "{}", ix - x)?;
-                } else {
-                    ix += 1;
-                    write!(f, "{}", piece)?;
-                }
-            }
-            if iy > 0 {
-                write!(f, "/")?;
-            }
-        }
-
-        write!(f, " {} ", if self.side == Side::Black { 'b' } else { 'w' })?;
-
-        if self.hands[0] == 0 && self.hands[1] == 0 {
-            write!(f, "-")?;
-        } else {
-            let pts = [
-                PieceType::Light,
-                PieceType::Heavy,
-                PieceType::General,
-                PieceType::Knight,
-                PieceType::Arrow,
-                PieceType::Archer0,
-            ];
-            for pt in pts {
-                let count = self.count_hand(Side::Black, pt);
-                let piece = pt.into_piece(Side::Black);
-                if count > 0 {
-                    write!(f, "{}", piece)?;
-                }
-                if count > 1 {
-                    write!(f, "{}", count)?;
-                }
-            }
-            for pt in pts {
-                let count = self.count_hand(Side::White, pt);
-                let piece = pt.into_piece(Side::White);
-                if count > 0 {
-                    write!(f, "{}", piece)?;
-                }
-                if count > 1 {
-                    write!(f, "{}", count)?;
-                }
-            }
-        }
-        Ok(())
-    }
 }
 
 impl Board {
@@ -530,6 +467,7 @@ impl Board {
             boards: [0; PIECE_TYPE_NB],
             sides: [0, 0],
             hands: [0, 0],
+            demise: [0, 0],
             diagonal_mask,
             anti_diagonal_mask,
             rank_mask,
@@ -643,6 +581,12 @@ impl Board {
     }
 
     pub fn do_move(&mut self, m: Move) {
+        if is_demise(m) {
+            self.demise[self.side as usize] += 1;
+            if m == MOVE_DEMISE {
+                return;
+            }
+        }
         let to = get_to(m);
         match get_move_type(m) {
             MoveType::Normal => {
@@ -728,6 +672,9 @@ impl Board {
 
     /// Make a move from mfen.
     pub fn read_move(&self, mfen: String) -> Result<Move, String> {
+        if mfen == "D" {
+            return Ok(MOVE_DEMISE);
+        }
         let mfen = mfen.as_bytes();
         if mfen.len() == 4 || mfen.len() == 5 {
             let x1 = read_file(mfen[0])?;
@@ -796,6 +743,74 @@ impl Piece {
     }
 }
 
+impl fmt::Display for Board {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for iy in (0..RANK_NB).rev() {
+            let mut ix = 0;
+            while ix < RANK_NB {
+                let piece = self.grid[iy * RANK_NB + ix];
+                if piece == Piece::None {
+                    let x = ix;
+                    ix += 1;
+                    while ix < RANK_NB {
+                        if self.grid[iy * RANK_NB + ix] == Piece::None {
+                            ix += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                    write!(f, "{}", ix - x)?;
+                } else {
+                    ix += 1;
+                    write!(f, "{}", piece)?;
+                }
+            }
+            if iy > 0 {
+                write!(f, "/")?;
+            }
+        }
+
+        write!(f, " {} ", if self.side == Side::Black { 'b' } else { 'w' })?;
+
+        if self.hands[0] == 0 && self.hands[1] == 0 {
+            write!(f, "-")?;
+        } else {
+            let pts = [
+                PieceType::Light,
+                PieceType::Heavy,
+                PieceType::General,
+                PieceType::Knight,
+                PieceType::Arrow,
+                PieceType::Archer0,
+            ];
+            for pt in pts {
+                let count = self.count_hand(Side::Black, pt);
+                let piece = pt.into_piece(Side::Black);
+                if count > 0 {
+                    write!(f, "{}", piece)?;
+                }
+                if count > 1 {
+                    write!(f, "{}", count)?;
+                }
+            }
+            for pt in pts {
+                let count = self.count_hand(Side::White, pt);
+                let piece = pt.into_piece(Side::White);
+                if count > 0 {
+                    write!(f, "{}", piece)?;
+                }
+                if count > 1 {
+                    write!(f, "{}", count)?;
+                }
+            }
+        }
+
+        write!(f, " {}", self.demise[0])?;
+        write!(f, " {}", self.demise[1])?;
+        Ok(())
+    }
+}
+
 impl FromStr for Board {
     type Err = String;
 
@@ -804,7 +819,7 @@ impl FromStr for Board {
         let mut ix = 0;
         let mut iy = RANK_NB - 1;
         let s: Vec<&str> = s.split(" ").collect();
-        if s.len() != 3 {
+        if s.len() != 5 {
             return Err("invalid mfen.".to_string());
         }
         for c in s[0].chars() {
@@ -871,6 +886,19 @@ impl FromStr for Board {
                 }
             }
         }
+
+        if let Ok(count) = s[3].parse() {
+            board.demise[0] = count;
+        } else {
+            return Err(format!("invalid demise: {}", s[3]));
+        }
+
+        if let Ok(count) = s[4].parse() {
+            board.demise[1] = count;
+        } else {
+            return Err(format!("invalid demise: {}", s[4]));
+        }
+
         Ok(board)
     }
 }

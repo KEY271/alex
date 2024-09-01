@@ -26,20 +26,19 @@ pub enum MoveType {
 }
 
 /// Mask of a captured piece.
-const MOVE_CAP: u32 = 0b11110000000000000000;
+const MOVE_CAP: u32 = 0b1111_0_000_000000_000000;
 const MOVE_CAP_SHIFT: u32 = 16;
 /// Mask of a demise flag.
-const MOVE_DEMISE: u32 = 0b00001000000000000000;
-const MOVE_DEMISE_SHIFT: u32 = 15;
+pub const MOVE_DEMISE: u32 = 0b0000_1_000_000000_000000;
 /// Mask of a move type.
-const MOVE_TYPE: u32 = 0b00000111000000000000;
+const MOVE_TYPE: u32 = 0b0000_0_111_000000_000000;
 const MOVE_TYPE_SHIFT: u32 = 12;
 /// Mask of a square the piece move from.
 /// Or the piece type if the move type is drop.
-const MOVE_FROM: u32 = 0b00000000111111000000;
+const MOVE_FROM: u32 = 0b0000_0_000_111111_000000;
 const MOVE_FROM_SHIFT: u32 = 6;
 /// Mask of a square the piece move to.
-const MOVE_TO: u32 = 0b00000000000000111111;
+const MOVE_TO: u32 = 0b0000_0_000_000000_111111;
 const MOVE_TO_SHIFT: u32 = 0;
 
 pub fn get_capture(m: Move) -> PieceType {
