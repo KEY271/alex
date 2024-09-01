@@ -247,6 +247,7 @@ const HAND_ARCHER_SHIFT: u32 = 20;
 /// Bitboard.
 pub type Bitboard = u64;
 
+#[allow(dead_code)]
 pub fn pretty_bb(bb: Bitboard) -> String {
     let mut output = String::new();
     for iy in (0..RANK_NB).rev() {
@@ -479,10 +480,6 @@ impl Board {
 
     pub fn pieces(&self) -> Bitboard {
         self.sides[Side::Black as usize] | self.sides[Side::White as usize]
-    }
-
-    pub fn pieces_pt(&self, pt: PieceType) -> Bitboard {
-        self.boards[pt as usize]
     }
 
     pub fn pieces_side(&self, side: Side) -> Bitboard {
