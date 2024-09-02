@@ -1,53 +1,32 @@
 import { useEffect, useState } from "react";
 import Board from "./components/Board";
 import { Position } from "./utils/game";
+import { get, post } from "./utils/connect";
 
 function App() {
     const [count, setCount] = useState(0);
     const [board, setBoard] = useState(new Position());
     useEffect(() => {
-        fetch("http://127.0.0.1:3001/api/board", { method: "GET" })
-            .then((res) => res.text())
-            .then((data) => {
-                const position = new Position();
-                position.load(data);
-                setBoard(position);
-            });
+        (async () => {
+            const res = await get("board");
+            const data = await res.text();
+            const position = new Position();
+            position.load(data);
+            setBoard(position);
+        })();
     }, [count]);
 
-    const reset = () => {
-        fetch("http://127.0.0.1:3001/api/board", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ mfen: "bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0" })
-        }).then(() => {
-            setCount((c) => c + 1);
-        });
+    const reset = async () => {
+        await post("board", { mfen: "bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0" });
+        setCount((c) => c + 1);
     };
 
-    const getBestMove = () => {
-        fetch("http://127.0.0.1:3001/api/bestmove", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ mfen: board.mfen() })
-        })
-            .then((res) => res.text())
-            .then((data) => {
-                console.log(data);
-                fetch("http://127.0.0.1:3001/api/move", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ mfen: data })
-                }).then(() => {
-                    setCount((c) => c + 1);
-                });
-            });
+    const getBestMove = async () => {
+        const res = await post("bestmove", { mfen: board.mfen() });
+        const data = res.text();
+        console.log(data);
+        await post("move", { mfen: data });
+        setCount((c) => c + 1);
     };
 
     return (

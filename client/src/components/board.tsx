@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PieceType, Position, Side } from "../utils/game";
 import Dialog from "./Dialog";
 import Piece from "./Piece";
+import { post } from "../utils/connect";
 
 type BoardProps = {
     position: Position;
@@ -33,19 +34,12 @@ function Board(props: BoardProps) {
     const [putAction, setPutAction] = useState<{ fn: (res: number) => () => void }>({ fn: () => () => {} });
     const [isDemiseDialogOpen, setDemiseDialogOpen] = useState(false);
     const [isPutDialogOpen, setPutDialogOpen] = useState(false);
-    const demiseAction = (res: boolean) => () => {
+    const demiseAction = (res: boolean) => async () => {
         setDemiseDialogOpen(false);
         if (res) {
-            fetch("http://127.0.0.1:3001/api/move", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ mfen: "D" })
-            }).then(() => {
-                setState(new State(-1, [], [], Side.None, 0));
-                setCount((c) => c + 1);
-            });
+            await post("move", { mfen: "D" });
+            setState(new State(-1, [], [], Side.None, 0));
+            setCount((c) => c + 1);
         }
     };
 
@@ -73,7 +67,7 @@ function Board(props: BoardProps) {
                     puttable = true;
                 }
             }
-            const onClick = () => {
+            const onClick = async () => {
                 if (state.movables.includes(j)) {
                     const from = position.square(state.selected);
                     const to = position.square(j);
@@ -82,19 +76,12 @@ function Board(props: BoardProps) {
                     if (pt2 == PieceType.Archer1 || pt2 == PieceType.Archer2) {
                         if (state.movables.filter((v) => v == j).length == 2) {
                             setShootAction({
-                                fn: (res: boolean) => () => {
+                                fn: (res: boolean) => async () => {
                                     mfen += res ? "S" : "";
                                     setShootDialogOpen(false);
-                                    fetch("http://127.0.0.1:3001/api/move", {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json"
-                                        },
-                                        body: JSON.stringify({ mfen: mfen })
-                                    }).then(() => {
-                                        setState(new State(-1, [], [state.selected, j], Side.None, 0));
-                                        setCount((c) => c + 1);
-                                    });
+                                    await post("move", { mfen: mfen });
+                                    setState(new State(-1, [], [state.selected, j], Side.None, 0));
+                                    setCount((c) => c + 1);
                                 }
                             });
                             setShootDialogOpen(true);
@@ -102,16 +89,9 @@ function Board(props: BoardProps) {
                         }
                         mfen += "S";
                     }
-                    fetch("http://127.0.0.1:3001/api/move", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({ mfen: mfen })
-                    }).then(() => {
-                        setState(new State(-1, [], [state.selected, j], Side.None, 0));
-                        setCount((c) => c + 1);
-                    });
+                    await post("move", { mfen: mfen });
+                    setState(new State(-1, [], [state.selected, j], Side.None, 0));
+                    setCount((c) => c + 1);
                     return;
                 }
                 if (puttable) {
@@ -134,36 +114,20 @@ function Board(props: BoardProps) {
                                 ]);
                             }
                             setPutAction({
-                                fn: (res) => () => {
+                                fn: (res) => async () => {
                                     setPutDialogOpen(false);
-                                    fetch("http://127.0.0.1:3001/api/move", {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json"
-                                        },
-                                        body: JSON.stringify({
-                                            mfen: to + String.fromCharCode(typ.charCodeAt(0) + res)
-                                        })
-                                    }).then(() => {
-                                        setState(new State(-1, [], [j], Side.None, 0));
-                                        setCount((c) => c + 1);
-                                    });
+                                    await post("move", { mfen: to + String.fromCharCode(typ.charCodeAt(0) + res) });
+                                    setState(new State(-1, [], [j], Side.None, 0));
+                                    setCount((c) => c + 1);
                                 }
                             });
                             setPutDialogOpen(true);
                             return;
                         }
                     }
-                    fetch("http://127.0.0.1:3001/api/move", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({ mfen: to + typ })
-                    }).then(() => {
-                        setState(new State(-1, [], [j], Side.None, 0));
-                        setCount((c) => c + 1);
-                    });
+                    await post("move", { mfen: to + typ });
+                    setState(new State(-1, [], [j], Side.None, 0));
+                    setCount((c) => c + 1);
                     return;
                 }
                 if (side != position.side) {
