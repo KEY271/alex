@@ -5,8 +5,13 @@ use super::{
     util::{PieceType, Value, PIECE_TYPE_NB, SQUARE_NB},
 };
 
+//                                                 NONE  L    H    K    P    G    N    R    A0   A1   A2
 // Value of a piece.
-const PIECE_VALUES: [Value; PIECE_TYPE_NB] = [0, 100, 200, 800, 600, 400, 400, 400, 400, 800, 1200];
+#[rustfmt::skip]
+const PIECE_VALUES: [Value; PIECE_TYPE_NB]      = [0,    100, 200, 800, 600, 400, 400, 200, 200, 500, 600];
+// Value of a piece in hand.
+#[rustfmt::skip]
+const PIECE_VALUES_HAND: [Value; PIECE_TYPE_NB] = [0,    100, 200, 0,   0,   400, 400, 250, 200, 0,   0];
 
 // Value of an effect.
 const EFFECT: Value = 10;
@@ -28,8 +33,8 @@ pub fn eval(board: &Board) -> Value {
             && pt != PieceType::Archer1
             && pt != PieceType::Archer2
         {
-            value += PIECE_VALUES[i] * board.count_hand(board.side, pt) as Value;
-            value -= PIECE_VALUES[i] * board.count_hand(!board.side, pt) as Value;
+            value += PIECE_VALUES_HAND[i] * board.count_hand(board.side, pt) as Value;
+            value -= PIECE_VALUES_HAND[i] * board.count_hand(!board.side, pt) as Value;
         }
     }
     let our_effects = board.effects[board.side as usize];
