@@ -6,7 +6,7 @@ use std::{
 use axum::{extract::State, Json};
 use serde::Deserialize;
 
-use crate::engine::{board::Board, search::bestmove};
+use crate::engine::{board::Board, movegen::is_pseudo_legal, search::bestmove};
 
 pub async fn get_board(State(board): State<Arc<Mutex<Board>>>) -> String {
     println!("GET: /api/board");
@@ -32,8 +32,12 @@ pub struct MoveMfen {
 pub async fn post_move(State(board): State<Arc<Mutex<Board>>>, Json(m): Json<MoveMfen>) {
     println!("POST: /api/move; {}", m.mfen);
     let mut board = board.lock().unwrap();
-    let m = board.read_move(m.mfen).unwrap();
-    board.do_move(m);
+    let mv = board.read_move(m.mfen).unwrap();
+    if is_pseudo_legal(&board, mv) {
+        board.do_move(mv);
+    } else {
+        println!("illegal!");
+    }
 }
 
 pub async fn post_bestmove(Json(mfen): Json<BoardMfen>) -> String {

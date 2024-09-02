@@ -7,7 +7,7 @@ mod tests {
 
     use crate::engine::{
         board::Board,
-        movegen::{GenType, MoveList},
+        movegen::{is_pseudo_legal, GenType, MoveList},
         util::{bit, move_to_mfen, PieceType, PIECE_TYPE_NB, SIDE_NB, SQUARE_NB},
     };
 
@@ -69,6 +69,18 @@ mod tests {
             if list.size == 0 {
                 println!("Cannot move.");
                 break;
+            }
+            let mut illegal = false;
+            for i in 0..list.size {
+                let mv = list.at(i).mv;
+                if !is_pseudo_legal(&board, mv) {
+                    println!("mv: {}", move_to_mfen(mv, board.side));
+                    illegal = true;
+                }
+            }
+            if illegal {
+                println!("board: {}", board);
+                panic!("illegal move.");
             }
             let index = rng.gen_range(0..list.size);
             let mv = list.at(index).mv;

@@ -33,7 +33,7 @@ pub struct Board {
     /// Hands of sides.
     hands: [Hand; SIDE_NB],
     /// Count of demise.
-    demise: [usize; SIDE_NB],
+    pub demise: [usize; SIDE_NB],
     /// Effect.
     pub effects: [[usize; SQUARE_NB]; SIDE_NB],
     /// Count of piece.
@@ -232,7 +232,7 @@ impl Board {
 
     pub fn file_attacks(&self, occ: u64, sq: Square) -> Bitboard {
         let afile = 0x0101010101010101;
-        let diagonal_a2_h7 = 0x0080402010080400;
+        let diagonal_a2_h7 = 0x0004081020408000;
         let occ = afile & (occ >> (sq as usize & 7));
         let occ = occ.wrapping_mul(diagonal_a2_h7) >> 58;
         self.a_file_attacks[occ as usize][sq as usize >> 3] << (sq as usize & 7)

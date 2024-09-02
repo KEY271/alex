@@ -1,4 +1,4 @@
-use std::mem::MaybeUninit;
+use std::{cmp::max, mem::MaybeUninit};
 
 use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
@@ -12,7 +12,10 @@ use crate::{
 
 use super::{
     board::Board,
-    util::{Bitboard, ExtMove, Move, PieceType, Side, Square},
+    util::{
+        bit, get_from, get_move_type, get_pt, get_to, is_demise, Bitboard, ExtMove, Move, MoveType,
+        Piece, PieceType, Side, Square, MOVE_DEMISE, RANK_NB,
+    },
 };
 
 const MAX_MOVE: usize = 520;
@@ -201,4 +204,134 @@ impl MoveList {
             }
         }
     }
+}
+
+pub fn is_pseudo_legal(board: &Board, mv: Move) -> bool {
+    let typ = get_move_type(mv);
+    let to = get_to(mv);
+    if is_demise(mv) {
+        if board.demise[board.side as usize] >= 2 {
+            return false;
+        }
+        if mv == MOVE_DEMISE {
+            return true;
+        }
+    }
+    match typ {
+        MoveType::Normal => {
+            let (pt, side) = board.grid[to as usize].split();
+            if pt != PieceType::None && side == board.side {
+                return false;
+            }
+
+            let from = get_from(mv);
+            let p = board.grid[from as usize];
+            if p == Piece::None || p.side() != board.side {
+                return false;
+            }
+            if p.pt() == PieceType::Heavy && (from as usize).abs_diff(to as usize) == RANK_NB * 2 {
+                let mid = (from as usize + to as usize) / 2;
+                if board.grid[mid] != Piece::None {
+                    return false;
+                }
+            } else if bit(board.movable_sq[p as usize][from as usize], to as usize) != 1 {
+                return false;
+            }
+        }
+        MoveType::Return => {
+            let (pt, side) = board.grid[to as usize].split();
+            if !(pt == PieceType::Archer0 || pt == PieceType::Archer1) || side != board.side {
+                return false;
+            }
+
+            let from = get_from(mv) as usize;
+            let (pt, side) = board.grid[from].split();
+            if pt != PieceType::Arrow || side != board.side {
+                return false;
+            }
+
+            let x1 = from % RANK_NB;
+            let y1 = from / RANK_NB;
+            let x2 = to as usize % RANK_NB;
+            let y2 = to as usize / RANK_NB;
+            let dist = max(x1.abs_diff(x2), y1.abs_diff(y2));
+            if x1.abs_diff(x2) != dist && x1 != x2 {
+                return false;
+            }
+            if y1.abs_diff(y2) != dist && y1 != y2 {
+                return false;
+            }
+            for i in 1..dist {
+                let x = x1 as isize + (x2 as isize - x1 as isize) / dist as isize * i as isize;
+                let y = y1 as isize + (y2 as isize - y1 as isize) / dist as isize * i as isize;
+                if board.grid[y as usize * RANK_NB + x as usize] != Piece::None {
+                    return false;
+                }
+            }
+        }
+        MoveType::Shoot => {
+            let (pt, side) = board.grid[to as usize].split();
+            if pt != PieceType::None && side == board.side {
+                return false;
+            }
+
+            let from = get_from(mv) as usize;
+            let (pt, side) = board.grid[from].split();
+            if !(pt == PieceType::Archer1 || pt == PieceType::Archer2) || side != board.side {
+                return false;
+            }
+
+            let x1 = from % RANK_NB;
+            let y1 = from / RANK_NB;
+            let x2 = to as usize % RANK_NB;
+            let y2 = to as usize / RANK_NB;
+            let dist = max(x1.abs_diff(x2), y1.abs_diff(y2));
+            if x1.abs_diff(x2) != dist && x1 != x2 {
+                return false;
+            }
+            if y1.abs_diff(y2) != dist && y1 != y2 {
+                return false;
+            }
+            for i in 1..dist {
+                let x = x1 as isize + (x2 as isize - x1 as isize) / dist as isize * i as isize;
+                let y = y1 as isize + (y2 as isize - y1 as isize) / dist as isize * i as isize;
+                if board.grid[y as usize * RANK_NB + x as usize] != Piece::None {
+                    return false;
+                }
+            }
+        }
+        MoveType::Drop => {
+            let pt = get_pt(mv);
+            if pt == PieceType::Archer1 {
+                if board.count_hand(board.side, PieceType::Archer0) == 0
+                    || board.count_hand(board.side, PieceType::Arrow) == 0
+                {
+                    return false;
+                }
+            } else if pt == PieceType::Archer2 {
+                if board.count_hand(board.side, PieceType::Archer0) == 0
+                    || board.count_hand(board.side, PieceType::Arrow) <= 1
+                {
+                    return false;
+                }
+            } else if board.count_hand(board.side, pt) == 0 {
+                return false;
+            }
+
+            if board.grid[to as usize] != Piece::None {
+                return false;
+            }
+        }
+        MoveType::Supply => {
+            if board.count_hand(board.side, PieceType::Arrow) == 0 {
+                return false;
+            }
+
+            let (pt, side) = board.grid[to as usize].split();
+            if !(pt == PieceType::Archer0 || pt == PieceType::Archer1) || side != board.side {
+                return false;
+            }
+        }
+    }
+    true
 }
