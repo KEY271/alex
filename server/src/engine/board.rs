@@ -38,6 +38,10 @@ pub struct Board {
     pub effects: [[usize; SQUARE_NB]; SIDE_NB],
     /// Count of piece.
     pub pieces: [[usize; PIECE_TYPE_NB]; SIDE_NB],
+    /// Square of king.
+    pub king_sq: [Option<Square>; SIDE_NB],
+    /// Square of prince.
+    pub prince_sq: [Option<Square>; SIDE_NB],
 
     /// Squares the piece can move to.
     pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
@@ -186,6 +190,8 @@ impl Board {
             demise: [0, 0],
             effects: [[0; SQUARE_NB]; SIDE_NB],
             pieces: [[0; PIECE_TYPE_NB]; SIDE_NB],
+            king_sq: [None, None],
+            prince_sq: [None, None],
             diagonal_mask,
             anti_diagonal_mask,
             rank_mask,
@@ -314,14 +320,21 @@ impl Board {
                 let p = self.grid[from as usize];
                 let (pt, side) = p.split();
                 let cap = self.grid[to as usize];
+                let cap_typ = cap.pt();
 
                 // capture
-                if cap.pt() != PieceType::None {
-                    change_bit!(self.boards[cap.pt() as usize], to as usize);
+                if cap_typ != PieceType::None {
+                    change_bit!(self.boards[cap_typ as usize], to as usize);
                     change_bit!(self.sides[cap.side() as usize], to as usize);
                     self.remove_effect(to, cap);
-                    self.add_hand(side, cap.pt());
-                    self.pieces[!side as usize][cap.pt() as usize] -= 1;
+                    self.add_hand(side, cap_typ);
+                    self.pieces[!side as usize][cap_typ as usize] -= 1;
+                    if cap_typ == PieceType::King {
+                        self.king_sq[!side as usize] = None;
+                    }
+                    if cap_typ == PieceType::Prince {
+                        self.prince_sq[!side as usize] = None;
+                    }
                 }
 
                 // to
@@ -329,6 +342,12 @@ impl Board {
                 change_bit!(self.sides[side as usize], to as usize);
                 self.grid[to as usize] = p;
                 self.add_effect(to, p);
+                if pt == PieceType::King {
+                    self.king_sq[self.side as usize] = Some(to);
+                }
+                if pt == PieceType::Prince {
+                    self.prince_sq[self.side as usize] = Some(to);
+                }
 
                 // from
                 change_bit!(self.boards[pt as usize], from as usize);
@@ -365,14 +384,21 @@ impl Board {
                 let from = get_from(m);
                 let (pt, side) = self.grid[from as usize].split();
                 let cap = self.grid[to as usize];
+                let cap_typ = cap.pt();
 
                 // capture
-                if cap.pt() != PieceType::None {
-                    change_bit!(self.boards[cap.pt() as usize], to as usize);
+                if cap_typ != PieceType::None {
+                    change_bit!(self.boards[cap_typ as usize], to as usize);
                     change_bit!(self.sides[cap.side() as usize], to as usize);
                     self.remove_effect(to, cap);
-                    self.add_hand(side, cap.pt());
-                    self.pieces[!side as usize][cap.pt() as usize] -= 1;
+                    self.add_hand(side, cap_typ);
+                    self.pieces[!side as usize][cap_typ as usize] -= 1;
+                    if cap_typ == PieceType::King {
+                        self.king_sq[!side as usize] = None;
+                    }
+                    if cap_typ == PieceType::Prince {
+                        self.prince_sq[!side as usize] = None;
+                    }
                 }
 
                 // archer
@@ -456,6 +482,12 @@ impl Board {
                     self.add_effect(to, cap_piece);
                     self.remove_hand(side, cap);
                     self.pieces[!side as usize][cap as usize] += 1;
+                    if cap == PieceType::King {
+                        self.king_sq[!side as usize] = Some(to);
+                    }
+                    if cap == PieceType::Prince {
+                        self.prince_sq[!side as usize] = Some(to);
+                    }
                 }
 
                 // to
@@ -468,6 +500,12 @@ impl Board {
                 change_bit!(self.sides[side as usize], from as usize);
                 self.grid[from as usize] = p;
                 self.add_effect(from, p);
+                if pt == PieceType::King {
+                    self.king_sq[side as usize] = Some(from);
+                }
+                if pt == PieceType::Prince {
+                    self.prince_sq[side as usize] = Some(from);
+                }
             }
             MoveType::Return => {
                 let from = get_from(m);
@@ -509,6 +547,12 @@ impl Board {
                     self.add_effect(to, cap_piece);
                     self.remove_hand(side, cap);
                     self.pieces[!side as usize][cap as usize] += 1;
+                    if cap == PieceType::King {
+                        self.king_sq[!side as usize] = Some(to);
+                    }
+                    if cap == PieceType::Prince {
+                        self.prince_sq[!side as usize] = Some(to);
+                    }
                 }
 
                 // archer
@@ -741,6 +785,12 @@ impl FromStr for Board {
             let i = iy * RANK_NB + ix;
             board.grid[i] = piece;
             let (pt, side) = piece.split();
+            if pt == PieceType::King {
+                board.king_sq[side as usize] = Some(Square::from_usize(i).unwrap());
+            }
+            if pt == PieceType::Prince {
+                board.prince_sq[side as usize] = Some(Square::from_usize(i).unwrap());
+            }
             change_bit!(board.boards[pt as usize], i);
             change_bit!(board.sides[side as usize], i);
             board.pieces[side as usize][pt as usize] += 1;

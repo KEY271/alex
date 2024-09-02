@@ -24,8 +24,26 @@ mod tests {
     }
 
     fn check_grid(board: &Board) -> bool {
+        let mut exist_king = [false; SIDE_NB];
+        let mut exist_prince = [false; SIDE_NB];
         for i in 0..SQUARE_NB {
             let (pt, side) = board.grid[i].split();
+            if pt == PieceType::King {
+                exist_king[side as usize] = true;
+                if board.king_sq[side as usize].is_none()
+                    || board.king_sq[side as usize].unwrap() as usize != i
+                {
+                    println!("King failed at {}.", i);
+                }
+            }
+            if pt == PieceType::Prince {
+                exist_prince[side as usize] = true;
+                if board.prince_sq[side as usize].is_none()
+                    || board.prince_sq[side as usize].unwrap() as usize != i
+                {
+                    println!("Prince failed at {}.", i);
+                }
+            }
             for j in 1..PIECE_TYPE_NB {
                 let pt2 = PieceType::from_usize(j).unwrap();
                 if pt == pt2 {
@@ -54,6 +72,22 @@ mod tests {
                 }
             }
         }
+        if exist_king[0] != board.king_sq[0].is_some() {
+            println!("King failed");
+            return false;
+        }
+        if exist_king[1] != board.king_sq[1].is_some() {
+            println!("King failed");
+            return false;
+        }
+        if exist_prince[0] != board.prince_sq[0].is_some() {
+            println!("Prince failed");
+            return false;
+        }
+        if exist_prince[1] != board.prince_sq[1].is_some() {
+            println!("Prince failed");
+            return false;
+        }
         true
     }
 
@@ -63,6 +97,10 @@ mod tests {
         let mut moves = Vec::new();
         let mut board =
             Board::from_str("bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0").unwrap();
+        if !check_grid(&board) {
+            println!("board: {}", board);
+            panic!("Init check failed");
+        }
         for i in 0..100000 {
             let mut list = MoveList::new();
             list.generate(&board, GenType::All);
