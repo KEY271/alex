@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import Board from "./components/Board";
-import { Position } from "./utils/game";
+import { getMoveSquares, Position } from "./utils/game";
 import { get, post } from "./utils/connect";
+import { setHistory } from "./utils/slices/board";
+import { useDispatch } from "react-redux";
 
 function App() {
+    const dispatch = useDispatch();
+
     const [count, setCount] = useState(0);
     const [board, setBoard] = useState(new Position());
     useEffect(() => {
@@ -18,14 +22,16 @@ function App() {
 
     const reset = async () => {
         await post("board", { mfen: "bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0" });
+        dispatch(setHistory([]));
         setCount((c) => c + 1);
     };
 
     const getBestMove = async () => {
         const res = await post("bestmove", { mfen: board.mfen() });
-        const data = res.text();
+        const data = await res.text();
         console.log(data);
         await post("move", { mfen: data });
+        dispatch(setHistory(getMoveSquares(data)));
         setCount((c) => c + 1);
     };
 

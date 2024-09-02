@@ -3,6 +3,9 @@ import { PieceType, Position, Side } from "../utils/game";
 import Dialog from "./Dialog";
 import Piece from "./Piece";
 import { post } from "../utils/connect";
+import { useDispatch } from "react-redux";
+import { setHistory } from "../utils/slices/board";
+import { useSelector } from "../utils/store";
 
 type BoardProps = {
     position: Position;
@@ -12,14 +15,12 @@ type BoardProps = {
 class State {
     selected: number;
     movables: number[];
-    history: number[];
     side: number;
     hand: number;
 
-    constructor(selected: number, movables: number[], history: number[], side: number, hand: number) {
+    constructor(selected: number, movables: number[], side: number, hand: number) {
         this.selected = selected;
         this.movables = movables;
-        this.history = history;
         this.side = side;
         this.hand = hand;
     }
@@ -27,6 +28,9 @@ class State {
 
 function Board(props: BoardProps) {
     const { position, setCount } = props;
+
+    const dispatch = useDispatch();
+    const history = useSelector((state) => state.board.history);
 
     const [isShootDialogOpen, setShootDialogOpen] = useState(false);
     const [shootAction, setShootAction] = useState<{ fn: (res: boolean) => () => void }>({ fn: () => () => {} });
@@ -38,12 +42,12 @@ function Board(props: BoardProps) {
         setDemiseDialogOpen(false);
         if (res) {
             await post("move", { mfen: "D" });
-            setState(new State(-1, [], [], Side.None, 0));
+            setState(new State(-1, [], Side.None, 0));
             setCount((c) => c + 1);
         }
     };
 
-    const [state, setState] = useState<State>(new State(-1, [], [], Side.None, 0));
+    const [state, setState] = useState<State>(new State(-1, [], Side.None, 0));
 
     const board = Array(64)
         .fill(0)
@@ -80,7 +84,8 @@ function Board(props: BoardProps) {
                                     mfen += res ? "S" : "";
                                     setShootDialogOpen(false);
                                     await post("move", { mfen: mfen });
-                                    setState(new State(-1, [], [state.selected, j], Side.None, 0));
+                                    dispatch(setHistory([state.selected, j]));
+                                    setState(new State(-1, [], Side.None, 0));
                                     setCount((c) => c + 1);
                                 }
                             });
@@ -90,7 +95,8 @@ function Board(props: BoardProps) {
                         mfen += "S";
                     }
                     await post("move", { mfen: mfen });
-                    setState(new State(-1, [], [state.selected, j], Side.None, 0));
+                    dispatch(setHistory([state.selected, j]));
+                    setState(new State(-1, [], Side.None, 0));
                     setCount((c) => c + 1);
                     return;
                 }
@@ -117,7 +123,8 @@ function Board(props: BoardProps) {
                                 fn: (res) => async () => {
                                     setPutDialogOpen(false);
                                     await post("move", { mfen: to + String.fromCharCode(typ.charCodeAt(0) + res) });
-                                    setState(new State(-1, [], [j], Side.None, 0));
+                                    dispatch(setHistory([j]));
+                                    setState(new State(-1, [], Side.None, 0));
                                     setCount((c) => c + 1);
                                 }
                             });
@@ -126,15 +133,17 @@ function Board(props: BoardProps) {
                         }
                     }
                     await post("move", { mfen: to + typ });
-                    setState(new State(-1, [], [j], Side.None, 0));
+                    dispatch(setHistory([j]));
+                    setState(new State(-1, [], Side.None, 0));
                     setCount((c) => c + 1);
                     return;
                 }
+                dispatch(setHistory([]));
                 if (side != position.side) {
-                    setState(new State(-1, [], [], Side.None, 0));
+                    setState(new State(-1, [], Side.None, 0));
                 } else {
                     const movables = position.movable(ix, iy);
-                    setState(new State(j, movables, [], Side.None, 0));
+                    setState(new State(j, movables, Side.None, 0));
                 }
             };
             const demise = side == Side.None ? 0 : position.demise[side - 1];
@@ -150,7 +159,7 @@ function Board(props: BoardProps) {
                         data-piece={side == position.side || state.movables.includes(j) || puttable}
                         data-selected={state.selected == j}
                         data-movable={state.movables.includes(j) || puttable}
-                        data-history={state.history.includes(j)}
+                        data-history={history.includes(j)}
                         className="flex h-full w-full select-none items-center justify-center border-red-500
                             data-[rev=true]:rotate-180 data-[piece=true]:cursor-pointer data-[selected=true]:border-2
                             data-[history=true]:bg-[lightsalmon] data-[movable=true]:bg-[darksalmon]">
@@ -180,7 +189,8 @@ function Board(props: BoardProps) {
         const count = n == 1 ? "" : n.toString();
         const onClick = () => {
             if (position.side == side) {
-                setState(new State(-1, [], [], side, i));
+                dispatch(setHistory([]));
+                setState(new State(-1, [], side, i));
             }
         };
         return (

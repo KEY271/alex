@@ -22,7 +22,7 @@ export type Side = (typeof Side)[keyof typeof Side];
 
 export type Piece = [PieceType, Side];
 
-const get_pt = (c: string) => {
+const getPieceType = (c: string) => {
     switch (c) {
         case "L":
         case "l":
@@ -103,7 +103,7 @@ export class Position {
                 }
                 continue;
             }
-            const pt = get_pt(c);
+            const pt = getPieceType(c);
             if (pt == PieceType.None) {
                 throw new Error("invalid character.");
             }
@@ -131,7 +131,7 @@ export class Position {
             let i = 0;
             while (i < s[2].length) {
                 const c = s[2][i];
-                const pt = get_pt(c);
+                const pt = getPieceType(c);
                 if (pt == PieceType.None) {
                     throw new Error("invalid character.");
                 }
@@ -392,3 +392,24 @@ export class Position {
         return String.fromCharCode("A".charCodeAt(0) + x) + (y + 1).toString();
     }
 }
+
+export const getMoveSquares = (mfen: string) => {
+    switch (mfen.length) {
+        case 3: {
+            const x = mfen.charCodeAt(0) - "A".charCodeAt(0);
+            const y = mfen.charCodeAt(1) - "1".charCodeAt(0);
+            return [y * 8 + x];
+        }
+        case 4:
+        case 5: {
+            const x1 = mfen.charCodeAt(0) - "A".charCodeAt(0);
+            const y1 = mfen.charCodeAt(1) - "1".charCodeAt(0);
+            const x2 = mfen.charCodeAt(2) - "A".charCodeAt(0);
+            const y2 = mfen.charCodeAt(3) - "1".charCodeAt(0);
+            return [y1 * 8 + x1, y2 * 8 + x2];
+            break;
+        }
+        default:
+            throw new Error("Invalid length.");
+    }
+};
