@@ -10,7 +10,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use engine::board::Board;
+use engine::position::Position;
 
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
@@ -29,8 +29,9 @@ async fn main() {
         let static_dir = ServeDir::new("static");
         app = app.nest_service("/", static_dir);
     }
-    let board = Board::from_str("bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0").unwrap();
-    let state = Arc::new(Mutex::new(board));
+    let position =
+        Position::from_str("bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0").unwrap();
+    let state = Arc::new(Mutex::new(position));
     let origins = ["http://127.0.0.1:5173".parse::<HeaderValue>().unwrap()];
     let app = app.with_state(state).layer(
         CorsLayer::new()

@@ -1,8 +1,8 @@
 use crate::engine::movegen::GenType;
 
 use super::{
-    board::Board,
     movegen::MoveList,
+    position::Position,
     util::{get_capture, ExtMove, Move, PIECE_TYPE_NB},
 };
 
@@ -65,11 +65,11 @@ impl MovePicker {
         }
     }
 
-    pub fn next_move(&mut self, board: &Board) -> Option<Move> {
+    pub fn next_move(&mut self, position: &Position) -> Option<Move> {
         loop {
             match self.stage {
                 Stage::CapturesInit => {
-                    self.moves.generate(board, GenType::Captures);
+                    self.moves.generate(position, GenType::Captures);
                     score_captures(self.moves.slice_mut(0));
                     self.stage = Stage::Captures;
                 }
@@ -82,7 +82,7 @@ impl MovePicker {
                 }
                 Stage::NonCapturesInit => {
                     self.moves.size = 0;
-                    self.moves.generate(board, GenType::NonCaptures);
+                    self.moves.generate(position, GenType::NonCaptures);
                     score_noncaptures(self.moves.slice_mut(0));
                     self.stage = Stage::NonCaptures;
                 }

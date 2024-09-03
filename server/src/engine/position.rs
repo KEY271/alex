@@ -20,9 +20,9 @@ use super::util::{
 /// Count of occupation.
 pub const OCC_NB: usize = 64;
 
-/// Board.
+/// Position.
 #[derive(PartialEq, Eq, Clone)]
-pub struct Board {
+pub struct Position {
     pub side: Side,
     /// Piece at the square.
     pub grid: [Piece; SQUARE_NB],
@@ -53,9 +53,9 @@ pub struct Board {
     a_file_attacks: [[Bitboard; RANK_NB]; OCC_NB],
 }
 
-impl Board {
+impl Position {
     /// Create an empty board.
-    pub fn new() -> Board {
+    pub fn new() -> Position {
         let mut movable_sq = [[0; SQUARE_NB]; PIECE_NB];
         for pt in PieceType::iter() {
             if pt == PieceType::None {
@@ -181,7 +181,7 @@ impl Board {
                 a_file_attacks[occ][rank] = u;
             }
         }
-        Board {
+        Position {
             side: Side::Black,
             movable_sq,
             boards: [0; PIECE_TYPE_NB],
@@ -709,7 +709,7 @@ impl Piece {
     }
 }
 
-impl fmt::Display for Board {
+impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for iy in (0..RANK_NB).rev() {
             let mut ix = 0;
@@ -777,11 +777,11 @@ impl fmt::Display for Board {
     }
 }
 
-impl FromStr for Board {
+impl FromStr for Position {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut board = Board::new();
+        let mut board = Position::new();
         let mut ix = 0;
         let mut iy = RANK_NB - 1;
         let s: Vec<&str> = s.split(" ").collect();
