@@ -18,6 +18,8 @@ pub enum Square {
     A6, B6, C6, D6, E6, F6, G6, H6,
     A7, B7, C7, D7, E7, F7, G7, H7,
     A8, B8, C8, D8, E8, F8, G8, H8,
+    // Invalid square.
+    NONE,
 }
 /// Count of squares.
 pub const SQUARE_NB: usize = 64;
@@ -27,6 +29,9 @@ pub const RANK_NB: usize = 8;
 
 impl fmt::Display for Square {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if *self == Square::NONE {
+            return write!(f, "NONE");
+        }
         let ix = *self as usize % RANK_NB;
         let iy = *self as usize / RANK_NB;
         write!(f, "{}{}", (ix + 65) as u8 as char, iy + 1)

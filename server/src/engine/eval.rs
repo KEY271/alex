@@ -25,8 +25,8 @@ const OPP_EFFECT: Value = 5;
 /// Returns a static evaluation of the position from the point of view of the side to move.
 pub fn eval(position: &Position) -> Value {
     let mut value = 0;
-    let our_pieces = position.pieces[position.side as usize];
-    let opp_pieces = position.pieces[!position.side as usize];
+    let our_pieces = position.piece_count[position.side as usize];
+    let opp_pieces = position.piece_count[!position.side as usize];
     for i in 1..PIECE_TYPE_NB {
         let pt = PieceType::from_usize(i).unwrap();
         value += PIECE_VALUES[i] * (our_pieces[i] as Value - opp_pieces[i] as Value);
