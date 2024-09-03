@@ -63,11 +63,11 @@ impl MoveList {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum GenType {
-    /// Moves without capturing.
+    /// Pesudo-legal moves without capturing.
     NonCaptures,
-    /// Moves with capturing.
+    /// Pesudo-legal moves with capturing.
     Captures,
-    /// All moves.
+    /// Pesudo-legal moves with and without capturing.
     All,
 }
 

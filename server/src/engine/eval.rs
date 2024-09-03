@@ -1,5 +1,7 @@
 use num_traits::FromPrimitive;
 
+use crate::foreach_bb;
+
 use super::{
     board::Board,
     util::{PieceType, Value, PIECE_TYPE_NB, SQUARE_NB},
@@ -37,15 +39,35 @@ pub fn eval(board: &Board) -> Value {
             value -= PIECE_VALUES_HAND[i] * board.count_hand(!board.side, pt) as Value;
         }
     }
-    let our_effects = board.effects[board.side as usize];
-    let opp_effects = board.effects[!board.side as usize];
-    let our_arrow_effects = board.calculate_arrow_effect(board.side);
-    let opp_arrow_effects = board.calculate_arrow_effect(!board.side);
+    let mut our_effects = board.effects[board.side as usize];
+    let mut opp_effects = board.effects[!board.side as usize];
+
+    let our_archer: u64 = board.pieces_pt_side(PieceType::Archer1, board.side)
+        | board.pieces_pt_side(PieceType::Archer2, board.side);
+    let opp_archer: u64 = board.pieces_pt_side(PieceType::Archer1, !board.side)
+        | board.pieces_pt_side(PieceType::Archer2, !board.side);
+    foreach_bb!(our_archer, sq, {
+        foreach_bb!(board.arrow_attacks(sq), sq2, {
+            our_effects[sq2 as usize] += 1;
+        });
+    });
+    foreach_bb!(opp_archer, sq, {
+        foreach_bb!(board.arrow_attacks(sq), sq2, {
+            opp_effects[sq2 as usize] += 1;
+        });
+    });
+
+    foreach_bb!(board.heavy_attacks(board.side), sq, {
+        our_effects[sq as usize] += 1;
+    });
+    foreach_bb!(board.heavy_attacks(!board.side), sq, {
+        opp_effects[sq as usize] += 1;
+    });
 
     for i in 0..SQUARE_NB {
         let (pt, side) = board.grid[i].split();
-        let our = (our_effects[i] + our_arrow_effects[i]) as Value;
-        let opp = (opp_effects[i] + opp_arrow_effects[i]) as Value;
+        let our = our_effects[i] as Value;
+        let opp = opp_effects[i] as Value;
         value += EFFECT * our;
         value -= EFFECT * opp;
         if pt != PieceType::None {

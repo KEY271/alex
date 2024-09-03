@@ -264,10 +264,14 @@ impl Board {
             | self.anti_diagonal_attacks(occupied, sq)
     }
 
-    fn calculate_effects(&mut self) {
+    pub fn calculate_effects(&self) -> [[usize; SQUARE_NB]; SIDE_NB] {
+        let mut effects = [[0; SQUARE_NB]; SIDE_NB];
         for i in 0..SQUARE_NB {
-            self.add_effect(Square::from_usize(i).unwrap(), self.grid[i]);
+            foreach_bb!(self.movable_sq[self.grid[i] as usize][i], sq2, {
+                effects[self.grid[i].side() as usize][sq2 as usize] += 1;
+            });
         }
+        effects
     }
 
     fn add_effect(&mut self, sq: Square, p: Piece) {
@@ -280,18 +284,6 @@ impl Board {
         foreach_bb!(self.movable_sq[p as usize][sq as usize], sq2, {
             self.effects[p.side() as usize][sq2 as usize] -= 1;
         });
-    }
-
-    pub fn calculate_arrow_effect(&self, side: Side) -> [usize; SQUARE_NB] {
-        let mut effect = [0; SQUARE_NB];
-        let arrow: u64 = self.pieces_pt_side(PieceType::Archer1, side)
-            | self.pieces_pt_side(PieceType::Archer2, side);
-        foreach_bb!(arrow, sq, {
-            foreach_bb!(self.arrow_attacks(sq), sq2, {
-                effect[sq2 as usize] += 1;
-            });
-        });
-        effect
     }
 
     pub fn count_hand(&self, side: Side, pt: PieceType) -> u32 {
@@ -646,6 +638,46 @@ impl Board {
             Err("Invalid length.".to_string())
         }
     }
+
+    pub fn crown_sq(&self, side: Side) -> Square {
+        if self.demise[side as usize] % 2 == 0 {
+            self.king_sq[side as usize].unwrap()
+        } else {
+            self.prince_sq[side as usize].unwrap()
+        }
+    }
+
+    pub fn calculate_checks(&self) -> Bitboard {
+        let crown: Square = self.crown_sq(self.side);
+        let mut checkers = 0;
+        for i in 0..SQUARE_NB {
+            let p = self.grid[i];
+            if p == Piece::None || p.side() == self.side {
+                continue;
+            }
+            foreach_bb!(self.movable_sq[p as usize][i], sq2, {
+                if sq2 == crown {
+                    checkers |= 1 << i;
+                }
+            });
+        }
+        if self.heavy_attacks(!self.side) & (1 << crown as usize) != 0 {
+            if self.side == Side::Black {
+                checkers |= 1 << (crown as usize + RANK_NB * 2);
+            } else {
+                checkers |= 1 << (crown as usize - RANK_NB * 2);
+            }
+        }
+        let archer = self.pieces_pt_side(PieceType::Archer1, !self.side)
+            | self.pieces_pt_side(PieceType::Archer2, !self.side);
+        foreach_bb!(archer, sq, {
+            let attacks = self.arrow_attacks(sq);
+            if attacks & (1 << crown as usize) != 0 {
+                checkers |= 1 << sq as usize;
+            }
+        });
+        checkers
+    }
 }
 
 impl Piece {
@@ -841,7 +873,7 @@ impl FromStr for Board {
             return Err(format!("invalid demise: {}", s[4]));
         }
 
-        board.calculate_effects();
+        board.effects = board.calculate_effects();
 
         Ok(board)
     }

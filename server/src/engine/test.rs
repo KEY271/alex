@@ -102,6 +102,11 @@ mod tests {
             panic!("Init check failed");
         }
         for i in 0..100000 {
+            if board.effects != board.calculate_effects() {
+                println!("board: {}", board);
+                panic!("Effects failed");
+            }
+
             let mut list = MoveList::new();
             list.generate(&board, GenType::All);
             if list.size == 0 {
