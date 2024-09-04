@@ -30,7 +30,7 @@ async fn main() {
         app = app.nest_service("/", static_dir);
     }
     let position =
-        Position::from_str("bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0").unwrap();
+        Position::from_str("bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0").unwrap();
     let state = Arc::new(Mutex::new(position));
     let origins = ["http://127.0.0.1:5173".parse::<HeaderValue>().unwrap()];
     let app = app.with_state(state).layer(

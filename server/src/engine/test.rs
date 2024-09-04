@@ -5,15 +5,12 @@ mod tests {
     use num_traits::FromPrimitive;
     use rand::{Rng, SeedableRng};
 
-    use crate::{
-        engine::{
-            movegen::{is_pseudo_legal, GenType, MoveList},
-            position::Position,
-            util::{
-                bit, move_to_mfen, PieceType, Square, PIECE_TYPE_NB, RANK_NB, SIDE_NB, SQUARE_NB,
-            },
+    use crate::engine::{
+        movegen::{is_pseudo_legal, GenType, MoveList},
+        position::Position,
+        util::{
+            bit, move_to_mfen, PieceType, Square, PIECE_TYPE_NB, RANK_NB, SIDE_NB, SQUARE_NB,
         },
-        for_pos,
     };
 
     fn count_piece(position: &Position) -> [[usize; PIECE_TYPE_NB]; SIDE_NB] {
@@ -134,7 +131,7 @@ mod tests {
         let mut rng = rand_xoshiro::Xoshiro256StarStar::seed_from_u64(32);
         let mut moves = Vec::new();
         let mut position =
-            Position::from_str("bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0").unwrap();
+            Position::from_str("bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0").unwrap();
         if !check_grid(&position) {
             println!("board: {}", position);
             panic!("Init check failed");

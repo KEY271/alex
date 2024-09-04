@@ -21,7 +21,7 @@ function App() {
     }, [count]);
 
     const reset = async () => {
-        await post("board", { mfen: "bngpkgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0" });
+        await post("board", { mfen: "bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0" });
         dispatch(setHistory([]));
         setCount((c) => c + 1);
     };
