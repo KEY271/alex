@@ -20,6 +20,93 @@ use super::util::{
 /// Count of occupation.
 pub const OCC_NB: usize = 64;
 
+#[derive(PartialEq, Eq, Clone)]
+pub struct StateInfo {
+    pub checkers: Bitboard,
+    pub blockers: Bitboard,
+    pub check_bb: [Bitboard; PIECE_TYPE_NB],
+}
+
+impl StateInfo {
+    pub fn new(position: &Position, checkers: Bitboard) -> Self {
+        let crown_sq = [
+            position.crown_sq(Side::Black),
+            position.crown_sq(Side::White),
+        ];
+
+        let opp_king = crown_sq[!position.side as usize];
+        let mut check_bb = [0; PIECE_TYPE_NB];
+        for i in 1..PIECE_TYPE_NB {
+            let pt = PieceType::from_usize(i).unwrap();
+            let p = pt.into_piece(position.side);
+            check_bb[i] = position.check_bb[p as usize][opp_king as usize];
+            match pt {
+                PieceType::Heavy => {
+                    let x = i % 8;
+                    let y = i / 8;
+                    if position.side == Side::Black
+                        && y >= 2
+                        && position.grid[(y - 2) * RANK_NB + x] == Piece::None
+                    {
+                        change_bit!(check_bb[i], (y - 2) * RANK_NB + x);
+                    }
+                    if position.side == Side::White
+                        && y <= 5
+                        && position.grid[(y + 2) * RANK_NB + x] == Piece::None
+                    {
+                        change_bit!(check_bb[i], (y + 2) * RANK_NB + x);
+                    }
+                }
+                PieceType::Archer1 | PieceType::Archer2 => {
+                    check_bb[i] |= position.arrow_attacks(opp_king);
+                }
+                _ => {}
+            }
+        }
+
+        let our_king = crown_sq[position.side as usize];
+        let mut blockers = 0;
+        let x = our_king as usize % 8;
+        let y = our_king as usize / 8;
+        if position.side == Side::Black
+            && y <= 5
+            && position.grid[(y + 2) * RANK_NB + x] == Piece::WHeavy
+        {
+            change_bit!(blockers, (y + 1) * RANK_NB + x);
+        }
+        if position.side == Side::White
+            && y >= 2
+            && position.grid[(y - 2) * RANK_NB + x] == Piece::BHeavy
+        {
+            change_bit!(blockers, (y - 1) * RANK_NB + x);
+        }
+        for pt in [PieceType::Archer1, PieceType::Archer2] {
+            for side in [Side::Black, Side::White] {
+                for sq in position.piece_list[!side as usize][pt as usize] {
+                    if sq == Square::NONE {
+                        break;
+                    }
+                    let line = position.between_bb[sq as usize][crown_sq[side as usize] as usize];
+                    let occ = position.pieces() & line;
+                    if occ == 0 {
+                        continue;
+                    }
+                    // Tests whether there is just one piece between an archer and the crown.
+                    if occ & (occ - 1) == 0 {
+                        blockers |= occ;
+                    }
+                }
+            }
+        }
+
+        StateInfo {
+            checkers,
+            blockers,
+            check_bb,
+        }
+    }
+}
+
 /// Position.
 #[derive(PartialEq, Eq, Clone)]
 pub struct Position {
@@ -42,6 +129,8 @@ pub struct Position {
     pub piece_list: [[[Square; 8]; PIECE_TYPE_NB]; SIDE_NB],
     /// Index of piece.
     pub index: [usize; SQUARE_NB],
+    /// Stack of StateInfo
+    pub states: Vec<StateInfo>,
 
     /// Squares the piece can move to.
     pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
@@ -51,6 +140,13 @@ pub struct Position {
     rank_mask: [Bitboard; SQUARE_NB],
     fill_up_attacks: [[Bitboard; RANK_NB]; OCC_NB],
     a_file_attacks: [[Bitboard; RANK_NB]; OCC_NB],
+    /// Line between squares.
+    pub between_bb: [[Bitboard; SQUARE_NB]; SQUARE_NB],
+    /// Line passing squares.
+    pub line_bb: [[Bitboard; SQUARE_NB]; SQUARE_NB],
+    check_bb: [[Bitboard; SQUARE_NB]; PIECE_NB],
+    /// Arrow attacks if there is no piece.
+    pub arrow_attacks: [Bitboard; SQUARE_NB],
 }
 
 impl Position {
@@ -181,9 +277,77 @@ impl Position {
                 a_file_attacks[occ][rank] = u;
             }
         }
+
+        let mut between_bb = [[0; SQUARE_NB]; SQUARE_NB];
+        for_pos!(ix, iy, i, {
+            for_pos!(jx, jy, j, {
+                if i == j {
+                    continue;
+                }
+                if ix == jx || iy == jy || ix + iy == jx + jy || ix + jy == iy + jx {
+                    let d = ix.abs_diff(jx).max(iy.abs_diff(jy));
+                    for k in 1..d {
+                        let x = ix as isize + (jx as isize - ix as isize) * k as isize / d as isize;
+                        let y = iy as isize + (jy as isize - iy as isize) * k as isize / d as isize;
+                        change_bit!(between_bb[i][j], y as usize * RANK_NB + x as usize);
+                    }
+                }
+            });
+        });
+
+        let mut line_bb = [[0; SQUARE_NB]; SQUARE_NB];
+        for_pos!(ix, iy, i, {
+            for_pos!(jx, jy, j, {
+                if i == j {
+                    continue;
+                }
+                if ix == jx || iy == jy || ix + iy == jx + jy || ix + jy == iy + jx {
+                    let d = ix.abs_diff(jx).max(iy.abs_diff(jy));
+                    for k in -8..9 {
+                        let x = ix as isize + (jx as isize - ix as isize) * k / d as isize;
+                        let y = iy as isize + (jy as isize - iy as isize) * k / d as isize;
+                        if 0 <= x && x < 8 && 0 <= y && y < 8 {
+                            change_bit!(line_bb[i][j], y as usize * RANK_NB + x as usize);
+                        }
+                    }
+                }
+            });
+        });
+
+        let mut check_bb = [[0; SQUARE_NB]; PIECE_NB];
+        for pt in 1..PIECE_TYPE_NB {
+            let pt = PieceType::from_usize(pt).unwrap();
+            let p1 = pt.into_piece(Side::Black);
+            let p2 = pt.into_piece(Side::White);
+            for i in 0..SQUARE_NB {
+                for j in 0..SQUARE_NB {
+                    if movable_sq[p1 as usize][j] & (1 << i) != 0 {
+                        check_bb[p1 as usize][i] |= 1 << j;
+                    }
+                    if movable_sq[p2 as usize][j] & (1 << i) != 0 {
+                        check_bb[p2 as usize][i] |= 1 << j;
+                    }
+                }
+            }
+        }
+
+        let mut arrow_attacks = [0; SQUARE_NB];
+        for_pos!(ix, iy, i, {
+            let mut bb = 0;
+            for_pos!(jx, jy, j, {
+                if i == j {
+                    continue;
+                }
+                if ix == jx || iy == jy || ix + iy == jx + jy || ix + jy == iy + jx {
+                    change_bit!(bb, j);
+                }
+            });
+            arrow_attacks[i] = bb;
+        });
+
         Position {
             side: Side::Black,
-            movable_sq,
+            grid: [Piece::None; SQUARE_NB],
             boards: [0; PIECE_TYPE_NB],
             sides: [0, 0],
             hands: [0, 0],
@@ -192,12 +356,17 @@ impl Position {
             piece_count: [[0; PIECE_TYPE_NB]; SIDE_NB],
             piece_list: [[[Square::NONE; 8]; PIECE_TYPE_NB]; SIDE_NB],
             index: [8; SQUARE_NB],
+            states: Vec::new(),
+            movable_sq,
             diagonal_mask,
             anti_diagonal_mask,
             rank_mask,
             fill_up_attacks,
             a_file_attacks,
-            grid: [Piece::None; SQUARE_NB],
+            between_bb,
+            line_bb,
+            check_bb,
+            arrow_attacks,
         }
     }
 
@@ -327,7 +496,23 @@ impl Position {
         self.grid[sq as usize] = Piece::None;
     }
 
-    pub fn do_move(&mut self, m: Move) {
+    fn move_piece(&mut self, from: Square, to: Square) {
+        let p = self.grid[from as usize];
+        let (pt, side) = p.split();
+        change_bit!(self.boards[pt as usize], from as usize);
+        change_bit!(self.sides[side as usize], from as usize);
+        change_bit!(self.boards[pt as usize], to as usize);
+        change_bit!(self.sides[side as usize], to as usize);
+        self.grid[from as usize] = Piece::None;
+        self.grid[to as usize] = p;
+        self.remove_effect(from, p);
+        self.add_effect(to, p);
+        self.index[to as usize] = self.index[from as usize];
+        self.index[from as usize] = 8;
+        self.piece_list[side as usize][pt as usize][self.index[to as usize]] = to;
+    }
+
+    pub fn do_move(&mut self, m: Move, checkers: Option<Bitboard>) {
         if is_demise(m) {
             self.demise[self.side as usize] += 1;
             if m == MOVE_DEMISE {
@@ -338,16 +523,13 @@ impl Position {
         match get_move_type(m) {
             MoveType::Normal => {
                 let from = get_from(m);
-                let p = self.grid[from as usize];
-                let (pt, side) = p.split();
                 let cap = get_capture(m);
 
                 if cap != PieceType::None {
                     self.remove_piece(to);
-                    self.add_hand(side, cap);
+                    self.add_hand(self.side, cap);
                 }
-                self.remove_piece(from);
-                self.add_piece(pt, side, to);
+                self.move_piece(from, to);
             }
             MoveType::Return => {
                 let from = get_from(m);
@@ -397,11 +579,18 @@ impl Position {
         }
 
         self.side = !self.side;
+
+        if let Some(checkers) = checkers {
+            self.states.push(StateInfo::new(self, checkers));
+        } else {
+            self.states
+                .push(StateInfo::new(self, self.calculate_checkers()));
+        }
     }
 
     pub fn undo_move(&mut self, m: Move) {
         if is_demise(m) {
-            self.demise[self.side as usize] -= 1;
+            self.demise[!self.side as usize] -= 1;
             if m == MOVE_DEMISE {
                 return;
             }
@@ -413,16 +602,14 @@ impl Position {
         let side = self.side;
         match get_move_type(m) {
             MoveType::Normal => {
-                let pt = self.grid[to as usize].pt();
                 let from = get_from(m);
                 let cap = get_capture(m);
 
-                self.remove_piece(to);
+                self.move_piece(to, from);
                 if cap != PieceType::None {
                     self.remove_hand(side, cap);
                     self.add_piece(cap, !side, to);
                 }
-                self.add_piece(pt, side, from);
             }
             MoveType::Return => {
                 let from = get_from(m);
@@ -471,6 +658,8 @@ impl Position {
                 }
             }
         }
+
+        self.states.pop();
     }
 
     /// Make a move from mfen.
@@ -524,7 +713,19 @@ impl Position {
         }
     }
 
-    pub fn calculate_checks(&self) -> Bitboard {
+    pub fn checkers(&self) -> Bitboard {
+        self.states.last().unwrap().checkers
+    }
+
+    pub fn blockers(&self) -> Bitboard {
+        self.states.last().unwrap().blockers
+    }
+
+    pub fn aligned(&self, sq1: Square, sq2: Square, sq3: Square) -> bool {
+        self.line_bb[sq1 as usize][sq2 as usize] & (1 << sq3 as usize) != 0
+    }
+
+    pub fn calculate_checkers(&self) -> Bitboard {
         let crown: Square = self.crown_sq(self.side);
         let mut checkers = 0;
         for i in 0..SQUARE_NB {
@@ -538,6 +739,7 @@ impl Position {
                 }
             });
         }
+
         if self.heavy_attacks(!self.side) & (1 << crown as usize) != 0 {
             if self.side == Side::Black {
                 checkers |= 1 << (crown as usize + RANK_NB * 2);
@@ -554,6 +756,25 @@ impl Position {
             }
         });
         checkers
+    }
+
+    pub fn is_attacked(&self, sq: Square, side: Side) -> bool {
+        if self.effects[!side as usize][sq as usize] != 0 {
+            return true;
+        }
+
+        if self.heavy_attacks(!side) & (1 << sq as usize) != 0 {
+            return true;
+        }
+        let archer = self.pieces_pt_side(PieceType::Archer1, !side)
+            | self.pieces_pt_side(PieceType::Archer2, !side);
+        foreach_bb!(archer, sq, {
+            let attacks = self.arrow_attacks(sq);
+            if attacks & (1 << sq as usize) != 0 {
+                return true;
+            }
+        });
+        false
     }
 }
 
@@ -658,7 +879,7 @@ impl FromStr for Position {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut board = Position::new();
+        let mut position = Position::new();
         let mut ix = 0;
         let mut iy = RANK_NB - 1;
         let s: Vec<&str> = s.split(" ").collect();
@@ -694,7 +915,7 @@ impl FromStr for Position {
             let i = iy * RANK_NB + ix;
             let (pt, side) = piece.split();
             if pt != PieceType::None {
-                board.add_piece(pt, side, Square::from_usize(i).unwrap());
+                position.add_piece(pt, side, Square::from_usize(i).unwrap());
             }
             ix += 1;
         }
@@ -703,9 +924,9 @@ impl FromStr for Position {
         }
 
         if s[1] == "b" {
-            board.side = Side::Black;
+            position.side = Side::Black;
         } else if s[1] == "w" {
-            board.side = Side::White;
+            position.side = Side::White;
         } else {
             return Err("invalid turn.".to_string());
         }
@@ -717,7 +938,7 @@ impl FromStr for Position {
                 let p = Piece::from_char(hand[i])?;
                 i += 1;
                 if i >= hand.len() || Piece::from_char(hand[i]).is_ok() {
-                    board.add_hand(p.side(), p.pt());
+                    position.add_hand(p.side(), p.pt());
                     break;
                 }
                 let count = hand[i] as i32 - 48;
@@ -726,25 +947,29 @@ impl FromStr for Position {
                 }
                 i += 1;
                 for _ in 0..count {
-                    board.add_hand(p.side(), p.pt());
+                    position.add_hand(p.side(), p.pt());
                 }
             }
         }
 
         if let Ok(count) = s[3].parse() {
-            board.demise[0] = count;
+            position.demise[0] = count;
         } else {
             return Err(format!("invalid demise: {}", s[3]));
         }
 
         if let Ok(count) = s[4].parse() {
-            board.demise[1] = count;
+            position.demise[1] = count;
         } else {
             return Err(format!("invalid demise: {}", s[4]));
         }
 
-        board.effects = board.calculate_effects();
+        position.effects = position.calculate_effects();
 
-        Ok(board)
+        position
+            .states
+            .push(StateInfo::new(&position, position.calculate_checkers()));
+
+        Ok(position)
     }
 }

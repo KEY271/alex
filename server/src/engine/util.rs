@@ -390,17 +390,18 @@ pub fn get_to(m: Move) -> Square {
 }
 
 pub fn move_to_mfen(m: Move, side: Side) -> String {
+    let demise = if is_demise(m) { "D" } else { "" };
     match get_move_type(m) {
-        MoveType::Normal => format!("{}{}", get_from(m), get_to(m)),
-        MoveType::Return => format!("{}{}", get_from(m), get_to(m)),
-        MoveType::Shoot => format!("{}{}S", get_from(m), get_to(m)),
-        MoveType::Drop => format!("{}{}", get_to(m), get_pt(m).into_piece(side)),
+        MoveType::Normal => format!("{}{}{}", get_from(m), get_to(m), demise),
+        MoveType::Return => format!("{}{}{}", get_from(m), get_to(m), demise),
+        MoveType::Shoot => format!("{}{}S{}", get_from(m), get_to(m), demise),
+        MoveType::Drop => format!("{}{}{}", get_to(m), get_pt(m).into_piece(side), demise),
         MoveType::Supply => {
             let to = get_to(m);
             if side == Side::Black {
-                format!("{}R", to)
+                format!("{}R{}", to, demise)
             } else {
-                format!("{}r", to)
+                format!("{}r{}", to, demise)
             }
         }
     }

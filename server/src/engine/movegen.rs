@@ -4,6 +4,7 @@ use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 
 use crate::{
+    change_bit,
     engine::util::{
         make_move_drop, make_move_normal, make_move_return, make_move_shoot, make_move_supply,
     },
@@ -69,6 +70,10 @@ pub enum GenType {
     Captures,
     /// Pesudo-legal moves with and without capturing.
     All,
+    /// Pseudo-legal moves to evade.
+    Evasion,
+    /// Legal moves.
+    Legal,
 }
 
 impl MoveList {
@@ -202,6 +207,100 @@ impl MoveList {
         self.generate_move_shoot(position, target);
     }
 
+    /// Generates moves to evade.
+    fn generate_evasion(&mut self, position: &Position) {
+        // Demise.
+        let mut demise_sq = Square::NONE;
+        if position.demise[position.side as usize] == 0 {
+            demise_sq = position.piece_list[position.side as usize][PieceType::Prince as usize][0];
+        } else if position.demise[position.side as usize] == 0 {
+            demise_sq = position.piece_list[position.side as usize][PieceType::King as usize][0];
+        }
+        if demise_sq != Square::NONE && !position.is_attacked(demise_sq, position.side) {
+            let start = self.size;
+            self.generate(position, GenType::All);
+            for s in self.slice_mut(start) {
+                s.mv |= MOVE_DEMISE;
+            }
+        }
+
+        let crown_sq = position.crown_sq(position.side);
+        let mut checkers_count = 0;
+        let mut attacks = 0;
+        let opp_archer: u64 = position.pieces_pt_side(PieceType::Archer1, !position.side)
+            | position.pieces_pt_side(PieceType::Archer2, !position.side);
+        foreach_bb!(opp_archer, sq, {
+            attacks |= position.arrow_attacks(sq);
+        });
+        let mut checker = Square::NONE;
+        let mut arrow_check = false;
+        foreach_bb!(position.checkers(), c, {
+            checkers_count += 1;
+            checker = c;
+            let pt = position.grid[c as usize].pt();
+            if pt == PieceType::Heavy {
+                let x = checker as usize % 8;
+                let y1 = checker as usize / 8;
+                let y2 = crown_sq as usize / 8;
+                if y1.abs_diff(y2) == 1 {
+                    if position.side == Side::Black && y2 >= 1 {
+                        change_bit!(attacks, (y2 - 1) * RANK_NB + x);
+                    }
+                    if position.side == Side::White && y2 <= 6 {
+                        change_bit!(attacks, (y2 + 1) * RANK_NB + x);
+                    }
+                }
+            }
+            if pt == PieceType::Archer1 || pt == PieceType::Archer2 {
+                arrow_check = true;
+                attacks |= position.line_bb[c as usize][crown_sq as usize];
+                attacks |= position.movable_sq[position.grid[c as usize] as usize][c as usize];
+            }
+        });
+        let crown_evasion =
+            position.movable_sq[position.grid[crown_sq as usize] as usize][crown_sq as usize];
+        foreach_bb!(
+            crown_evasion & !attacks & !position.pieces_side(position.side),
+            sq,
+            {
+                let cap = position.grid[sq as usize].pt();
+                self.push(make_move_normal(cap, crown_sq, sq));
+            }
+        );
+
+        if checkers_count == 1 {
+            let target = if arrow_check {
+                (1 << checker as usize) | position.between_bb[checker as usize][crown_sq as usize]
+            } else {
+                1 << checker as usize
+            };
+            self.generate_move_normal(position, target);
+            self.generate_move_shoot(position, target);
+        }
+    }
+
+    fn generate_legal(&mut self, position: &Position) {
+        if position.checkers() != 0 {
+            self.generate_evasion(position);
+        } else {
+            self.generate_captures(position);
+            self.generate_non_captures(position);
+        }
+        let mut legal_moves = Vec::new();
+        for mv in self.slice(0) {
+            if is_legal(position, mv.mv) {
+                legal_moves.push(mv.clone());
+            }
+        }
+
+        self.size = legal_moves.len();
+
+        let moves = self.slice_mut(0);
+        for (i, mv) in legal_moves.into_iter().enumerate() {
+            moves[i] = mv;
+        }
+    }
+
     /// Generates moves.
     pub fn generate(&mut self, position: &Position, gen: GenType) {
         match gen {
@@ -211,6 +310,8 @@ impl MoveList {
                 self.generate_captures(position);
                 self.generate_non_captures(position);
             }
+            GenType::Evasion => self.generate_evasion(position),
+            GenType::Legal => self.generate_legal(position),
         }
     }
 }
@@ -343,4 +444,28 @@ pub fn is_pseudo_legal(position: &Position, mv: Move) -> bool {
         }
     }
     true
+}
+
+pub fn is_legal(position: &Position, mv: Move) -> bool {
+    match get_move_type(mv) {
+        MoveType::Normal | MoveType::Return => {
+            let from = get_from(mv);
+            let to = get_to(mv);
+            let demise =
+                position.demise[position.side as usize] + if is_demise(mv) { 1 } else { 0 };
+            let crown_sq = if demise % 2 == 0 {
+                position.piece_list[position.side as usize][PieceType::King as usize][0]
+            } else {
+                position.piece_list[position.side as usize][PieceType::Prince as usize][0]
+            };
+            if from == crown_sq {
+                !position.is_attacked(to, position.side)
+            } else if position.blockers() & (1 << from as usize) != 0 {
+                position.aligned(from, to, crown_sq)
+            } else {
+                true
+            }
+        }
+        _ => true,
+    }
 }

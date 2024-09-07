@@ -4,13 +4,12 @@ mod tests {
 
     use num_traits::FromPrimitive;
     use rand::{Rng, SeedableRng};
+    use rand_xoshiro::Xoshiro256StarStar;
 
     use crate::engine::{
-        movegen::{is_pseudo_legal, GenType, MoveList},
+        movegen::{is_legal, is_pseudo_legal, GenType, MoveList},
         position::Position,
-        util::{
-            bit, move_to_mfen, PieceType, Square, PIECE_TYPE_NB, RANK_NB, SIDE_NB, SQUARE_NB,
-        },
+        util::{bit, move_to_mfen, PieceType, Square, PIECE_TYPE_NB, RANK_NB, SIDE_NB, SQUARE_NB},
     };
 
     fn count_piece(position: &Position) -> [[usize; PIECE_TYPE_NB]; SIDE_NB] {
@@ -126,9 +125,7 @@ mod tests {
         true
     }
 
-    #[test]
-    fn random_move() {
-        let mut rng = rand_xoshiro::Xoshiro256StarStar::seed_from_u64(32);
+    fn random_move_once(rng: &mut Xoshiro256StarStar, count: usize) {
         let mut moves = Vec::new();
         let mut position =
             Position::from_str("bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0").unwrap();
@@ -136,14 +133,14 @@ mod tests {
             println!("board: {}", position);
             panic!("Init check failed");
         }
-        for i in 0..100000 {
+        for i in 1..10001 {
             if position.effects != position.calculate_effects() {
                 println!("board: {}", position);
                 panic!("Effects failed");
             }
 
             let mut list = MoveList::new();
-            list.generate(&position, GenType::All);
+            list.generate(&position, GenType::Legal);
             if list.size == 0 {
                 println!("Cannot move.");
                 break;
@@ -155,6 +152,10 @@ mod tests {
                     println!("mv: {}", move_to_mfen(mv, position.side));
                     illegal = true;
                 }
+                if !is_legal(&position, mv) {
+                    println!("mv: {}", move_to_mfen(mv, position.side));
+                    illegal = true;
+                }
             }
             if illegal {
                 println!("board: {}", position);
@@ -163,10 +164,14 @@ mod tests {
             let index = rng.gen_range(0..list.size);
             let mv = list.at(index).mv;
             let mv_mfen = move_to_mfen(mv, position.side);
-            println!("Try {}: {}; ", i, mv_mfen);
+            println!("Try {}; {}: {}; ", count, i, mv_mfen);
 
             let temp = position.clone();
-            position.do_move(mv);
+            position.do_move(mv, None);
+            if position.is_attacked(position.crown_sq(!position.side), !position.side) {
+                println!("board: {}", position);
+                panic!("illegal move.");
+            }
             if !check_grid(&position) {
                 println!("old: {}", temp);
                 println!("new: {}", position);
@@ -192,15 +197,23 @@ mod tests {
 
             if let Some(last) = moves.last() {
                 if rng.gen_ratio(2, 3) {
-                    position.do_move(mv);
+                    position.do_move(mv, None);
                     moves.push(mv);
                 } else {
                     position.undo_move(*last);
                     moves.pop();
                 }
             } else {
-                position.do_move(mv);
+                position.do_move(mv, None);
             }
+        }
+    }
+
+    #[test]
+    fn random_move() {
+        let mut rng = rand_xoshiro::Xoshiro256StarStar::seed_from_u64(32);
+        for i in 1..101 {
+            random_move_once(&mut rng, i);
         }
     }
 }

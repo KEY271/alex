@@ -1,6 +1,6 @@
 use super::{
     eval::eval,
-    movegen::{GenType, MoveList},
+    movegen::{is_legal, GenType, MoveList},
     movepick::MovePicker,
     position::Position,
     util::{move_to_mfen, Move, Value, VALUE_INF},
@@ -25,7 +25,11 @@ fn search_root(
 
     for i in 0..moves.size {
         let mv = moves.at(i).mv;
-        position.do_move(mv);
+        if !is_legal(position, mv) {
+            continue;
+        }
+
+        position.do_move(mv, None);
         let ev = -search_node(position, -beta, -alpha, 3);
         vec.push((mv, ev));
         position.undo_move(mv);
@@ -49,11 +53,15 @@ fn search_node(position: &mut Position, alpha: Value, beta: Value, depth: usize)
     let mut bestvalue = Value::MIN;
     let mut alpha = alpha;
 
-    let mut picker = MovePicker::new();
+    let mut picker = MovePicker::new(position);
     loop {
         let mv = picker.next_move(position);
         if let Some(mv) = mv {
-            position.do_move(mv);
+            if !is_legal(position, mv) {
+                continue;
+            }
+
+            position.do_move(mv, None);
             let ev = -search_node(position, -beta, -alpha, depth - 1);
             position.undo_move(mv);
 

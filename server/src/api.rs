@@ -34,7 +34,7 @@ pub async fn post_move(State(position): State<Arc<Mutex<Position>>>, Json(m): Js
     let mut position = position.lock().unwrap();
     let mv = position.read_move(m.mfen).unwrap();
     if is_pseudo_legal(&position, mv) {
-        position.do_move(mv);
+        position.do_move(mv, None);
     } else {
         println!("illegal!");
     }

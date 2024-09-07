@@ -11,6 +11,8 @@ enum Stage {
     Captures,
     NonCapturesInit,
     NonCaptures,
+    EvasionInit,
+    Evasion,
 }
 
 pub struct MovePicker {
@@ -57,11 +59,15 @@ fn select_best(moves: &mut [ExtMove], cur: &mut usize) -> Option<Move> {
 }
 
 impl MovePicker {
-    pub fn new() -> Self {
+    pub fn new(position: &Position) -> Self {
         MovePicker {
             cur: 0,
             moves: MoveList::new(),
-            stage: Stage::CapturesInit,
+            stage: if position.checkers() != 0 {
+                Stage::EvasionInit
+            } else {
+                Stage::CapturesInit
+            },
         }
     }
 
@@ -88,7 +94,19 @@ impl MovePicker {
                 }
                 Stage::NonCaptures => {
                     if self.cur < self.moves.size {
-                        let mv = self.moves.slice(0)[self.cur].mv;
+                        let mv = self.moves.at(self.cur).mv;
+                        self.cur += 1;
+                        return Some(mv);
+                    }
+                    break;
+                }
+                Stage::EvasionInit => {
+                    self.moves.generate(position, GenType::Evasion);
+                    self.stage = Stage::Evasion;
+                }
+                Stage::Evasion => {
+                    if self.cur < self.moves.size {
+                        let mv = self.moves.at(self.cur).mv;
                         self.cur += 1;
                         return Some(mv);
                     }
