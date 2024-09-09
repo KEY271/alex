@@ -8,7 +8,7 @@ use super::{
 
 fn search(position: &mut Position) -> Move {
     let mut moves = MoveList::new();
-    moves.generate(position, GenType::All);
+    moves.generate(position, GenType::Legal);
     let res = search_root(&moves, position, -VALUE_INF, VALUE_INF);
     res.into_iter().max_by_key(|v| v.1).unwrap().0
 }
@@ -25,10 +25,6 @@ fn search_root(
 
     for i in 0..moves.size {
         let mv = moves.at(i).mv;
-        if !is_legal(position, mv) {
-            continue;
-        }
-
         position.do_move(mv, None);
         let ev = -search_node(position, -beta, -alpha, 3);
         vec.push((mv, ev));
@@ -50,7 +46,7 @@ fn search_node(position: &mut Position, alpha: Value, beta: Value, depth: usize)
         return eval(position);
     }
 
-    let mut bestvalue = Value::MIN;
+    let mut bestvalue = -VALUE_INF;
     let mut alpha = alpha;
 
     let mut picker = MovePicker::new(position);

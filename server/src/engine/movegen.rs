@@ -213,7 +213,7 @@ impl MoveList {
         let mut demise_sq = Square::NONE;
         if position.demise[position.side as usize] == 0 {
             demise_sq = position.piece_list[position.side as usize][PieceType::Prince as usize][0];
-        } else if position.demise[position.side as usize] == 0 {
+        } else if position.demise[position.side as usize] == 1 {
             demise_sq = position.piece_list[position.side as usize][PieceType::King as usize][0];
         }
         if demise_sq != Square::NONE && !position.is_attacked(demise_sq, position.side) {
@@ -453,14 +453,20 @@ pub fn is_legal(position: &Position, mv: Move) -> bool {
             let to = get_to(mv);
             let demise =
                 position.demise[position.side as usize] + if is_demise(mv) { 1 } else { 0 };
-            let crown_sq = if demise % 2 == 0 {
-                position.piece_list[position.side as usize][PieceType::King as usize][0]
+            let (blockers, crown_sq) = if demise % 2 == 0 {
+                (
+                    position.blockers_king(),
+                    position.piece_list[position.side as usize][PieceType::King as usize][0],
+                )
             } else {
-                position.piece_list[position.side as usize][PieceType::Prince as usize][0]
+                (
+                    position.blockers_prince(),
+                    position.piece_list[position.side as usize][PieceType::Prince as usize][0],
+                )
             };
             if from == crown_sq {
                 !position.is_attacked(to, position.side)
-            } else if position.blockers() & (1 << from as usize) != 0 {
+            } else if blockers & (1 << from as usize) != 0 {
                 position.aligned(from, to, crown_sq)
             } else {
                 true

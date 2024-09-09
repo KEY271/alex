@@ -9,7 +9,9 @@ mod tests {
     use crate::engine::{
         movegen::{is_legal, is_pseudo_legal, GenType, MoveList},
         position::Position,
-        util::{bit, move_to_mfen, PieceType, Square, PIECE_TYPE_NB, RANK_NB, SIDE_NB, SQUARE_NB},
+        util::{
+            bit, move_to_mfen, PieceType, Side, Square, PIECE_TYPE_NB, RANK_NB, SIDE_NB, SQUARE_NB,
+        },
     };
 
     fn count_piece(position: &Position) -> [[usize; PIECE_TYPE_NB]; SIDE_NB] {
@@ -25,6 +27,14 @@ mod tests {
     }
 
     fn check_grid(position: &Position) -> bool {
+        if position.crown_sq(Side::Black) == Square::NONE {
+            println!("Black crown lost.");
+            return false;
+        }
+        if position.crown_sq(Side::White) == Square::NONE {
+            println!("White crown lost.");
+            return false;
+        }
         if count_piece(&position) != position.piece_count {
             println!("grid  : {:?}", count_piece(&position));
             println!("pieces: {:?}", position.piece_count);
@@ -126,7 +136,6 @@ mod tests {
     }
 
     fn random_move_once(rng: &mut Xoshiro256StarStar, count: usize) {
-        let mut moves = Vec::new();
         let mut position =
             Position::from_str("bngkpgnb/llhhhhll/8/8/8/8/LLHHHHLL/BNGPKGNB b - 0 0").unwrap();
         if !check_grid(&position) {
@@ -195,24 +204,14 @@ mod tests {
             }
             println!("Success");
 
-            if let Some(last) = moves.last() {
-                if rng.gen_ratio(2, 3) {
-                    position.do_move(mv, None);
-                    moves.push(mv);
-                } else {
-                    position.undo_move(*last);
-                    moves.pop();
-                }
-            } else {
-                position.do_move(mv, None);
-            }
+            position.do_move(mv, None);
         }
     }
 
     #[test]
     fn random_move() {
         let mut rng = rand_xoshiro::Xoshiro256StarStar::seed_from_u64(32);
-        for i in 1..101 {
+        for i in 1..1001 {
             random_move_once(&mut rng, i);
         }
     }

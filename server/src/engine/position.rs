@@ -23,23 +23,59 @@ pub const OCC_NB: usize = 64;
 #[derive(PartialEq, Eq, Clone)]
 pub struct StateInfo {
     pub checkers: Bitboard,
-    pub blockers: Bitboard,
+    pub blockers_king: Bitboard,
+    pub blockers_prince: Bitboard,
     pub check_bb: [Bitboard; PIECE_TYPE_NB],
 }
 
 impl StateInfo {
-    pub fn new(position: &Position, checkers: Bitboard) -> Self {
-        let crown_sq = [
-            position.crown_sq(Side::Black),
-            position.crown_sq(Side::White),
-        ];
+    fn calculate_blockers(position: &Position, sq: Square) -> Bitboard {
+        if sq == Square::NONE {
+            return 0;
+        }
+        let mut blockers = 0;
+        let x = sq as usize % 8;
+        let y = sq as usize / 8;
+        if position.side == Side::Black
+            && y <= 5
+            && position.grid[(y + 2) * RANK_NB + x] == Piece::WHeavy
+        {
+            change_bit!(blockers, (y + 1) * RANK_NB + x);
+        }
+        if position.side == Side::White
+            && y >= 2
+            && position.grid[(y - 2) * RANK_NB + x] == Piece::BHeavy
+        {
+            change_bit!(blockers, (y - 1) * RANK_NB + x);
+        }
+        for pt in [PieceType::Archer1, PieceType::Archer2] {
+            for side in [Side::Black, Side::White] {
+                for sq2 in position.piece_list[!side as usize][pt as usize] {
+                    if sq2 == Square::NONE {
+                        break;
+                    }
+                    let line = position.between_bb[sq2 as usize][sq as usize];
+                    let occ = position.pieces() & line;
+                    if occ == 0 {
+                        continue;
+                    }
+                    // Tests whether there is just one piece between an archer and the crown.
+                    if occ & (occ - 1) == 0 {
+                        blockers |= occ;
+                    }
+                }
+            }
+        }
+        blockers
+    }
 
-        let opp_king = crown_sq[!position.side as usize];
+    pub fn new(position: &Position, checkers: Bitboard) -> Self {
+        let opp_crown = position.crown_sq(!position.side);
         let mut check_bb = [0; PIECE_TYPE_NB];
         for i in 1..PIECE_TYPE_NB {
             let pt = PieceType::from_usize(i).unwrap();
             let p = pt.into_piece(position.side);
-            check_bb[i] = position.check_bb[p as usize][opp_king as usize];
+            check_bb[i] = position.check_bb[p as usize][opp_crown as usize];
             match pt {
                 PieceType::Heavy => {
                     let x = i % 8;
@@ -58,50 +94,19 @@ impl StateInfo {
                     }
                 }
                 PieceType::Archer1 | PieceType::Archer2 => {
-                    check_bb[i] |= position.arrow_attacks(opp_king);
+                    check_bb[i] |= position.arrow_attacks(opp_crown);
                 }
                 _ => {}
             }
         }
 
-        let our_king = crown_sq[position.side as usize];
-        let mut blockers = 0;
-        let x = our_king as usize % 8;
-        let y = our_king as usize / 8;
-        if position.side == Side::Black
-            && y <= 5
-            && position.grid[(y + 2) * RANK_NB + x] == Piece::WHeavy
-        {
-            change_bit!(blockers, (y + 1) * RANK_NB + x);
-        }
-        if position.side == Side::White
-            && y >= 2
-            && position.grid[(y - 2) * RANK_NB + x] == Piece::BHeavy
-        {
-            change_bit!(blockers, (y - 1) * RANK_NB + x);
-        }
-        for pt in [PieceType::Archer1, PieceType::Archer2] {
-            for side in [Side::Black, Side::White] {
-                for sq in position.piece_list[!side as usize][pt as usize] {
-                    if sq == Square::NONE {
-                        break;
-                    }
-                    let line = position.between_bb[sq as usize][crown_sq[side as usize] as usize];
-                    let occ = position.pieces() & line;
-                    if occ == 0 {
-                        continue;
-                    }
-                    // Tests whether there is just one piece between an archer and the crown.
-                    if occ & (occ - 1) == 0 {
-                        blockers |= occ;
-                    }
-                }
-            }
-        }
+        let our_king = position.piece_list[position.side as usize][PieceType::King as usize][0];
+        let our_prince = position.piece_list[position.side as usize][PieceType::Prince as usize][0];
 
         StateInfo {
             checkers,
-            blockers,
+            blockers_king: Self::calculate_blockers(position, our_king),
+            blockers_prince: Self::calculate_blockers(position, our_prince),
             check_bb,
         }
     }
@@ -667,8 +672,14 @@ impl Position {
         if mfen == "D" {
             return Ok(MOVE_DEMISE);
         }
+        let mut len = mfen.len();
+        let mut demise = 0;
+        if mfen.ends_with("D") {
+            len -= 1;
+            demise = MOVE_DEMISE;
+        }
         let mfen = mfen.as_bytes();
-        if mfen.len() == 4 || mfen.len() == 5 {
+        if len == 4 || len == 5 {
             let x1 = read_file(mfen[0])?;
             let y1 = read_rank(mfen[1])?;
             let from = Square::from_usize(y1 * RANK_NB + x1).unwrap();
@@ -676,29 +687,29 @@ impl Position {
             let y2 = read_rank(mfen[3])?;
             let to = Square::from_usize(y2 * RANK_NB + x2).unwrap();
             let cap = self.grid[to as usize];
-            if mfen.len() == 5 {
+            if len == 5 {
                 if mfen[4] == b'S' {
-                    Ok(make_move_shoot(cap.pt(), from, to))
+                    Ok(make_move_shoot(cap.pt(), from, to) | demise)
                 } else {
                     Err("Invalid end character.".to_string())
                 }
             } else {
                 if cap.pt() != PieceType::None && cap.side() == self.side {
-                    Ok(make_move_return(from, to))
+                    Ok(make_move_return(from, to) | demise)
                 } else {
-                    Ok(make_move_normal(cap.pt(), from, to))
+                    Ok(make_move_normal(cap.pt(), from, to) | demise)
                 }
             }
-        } else if mfen.len() == 3 {
+        } else if len == 3 {
             let x = read_file(mfen[0])?;
             let y = read_rank(mfen[1])?;
             let to = Square::from_usize(y * RANK_NB + x).unwrap();
             let pt = PieceType::from_char(mfen[2]);
             let to_pt = self.grid[to as usize].pt();
             if to_pt == PieceType::Archer0 || to_pt == PieceType::Archer1 {
-                Ok(make_move_supply(to))
+                Ok(make_move_supply(to) | demise)
             } else {
-                Ok(make_move_drop(pt, to))
+                Ok(make_move_drop(pt, to) | demise)
             }
         } else {
             Err("Invalid length.".to_string())
@@ -717,8 +728,12 @@ impl Position {
         self.states.last().unwrap().checkers
     }
 
-    pub fn blockers(&self) -> Bitboard {
-        self.states.last().unwrap().blockers
+    pub fn blockers_king(&self) -> Bitboard {
+        self.states.last().unwrap().blockers_king
+    }
+
+    pub fn blockers_prince(&self) -> Bitboard {
+        self.states.last().unwrap().blockers_prince
     }
 
     pub fn aligned(&self, sq1: Square, sq2: Square, sq3: Square) -> bool {
@@ -768,8 +783,8 @@ impl Position {
         }
         let archer = self.pieces_pt_side(PieceType::Archer1, !side)
             | self.pieces_pt_side(PieceType::Archer2, !side);
-        foreach_bb!(archer, sq, {
-            let attacks = self.arrow_attacks(sq);
+        foreach_bb!(archer, sq2, {
+            let attacks = self.arrow_attacks(sq2);
             if attacks & (1 << sq as usize) != 0 {
                 return true;
             }
