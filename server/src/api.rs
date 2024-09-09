@@ -40,8 +40,14 @@ pub async fn post_move(State(position): State<Arc<Mutex<Position>>>, Json(m): Js
     }
 }
 
-pub async fn post_bestmove(Json(mfen): Json<BoardMfen>) -> String {
-    println!("POST: /api/bestmove; {}", mfen.mfen);
-    let mut position = Position::from_str(&mfen.mfen).unwrap();
-    bestmove(&mut position)
+#[derive(Deserialize)]
+pub struct Bestmove {
+    mfen: String,
+    time: f64,
+}
+
+pub async fn post_bestmove(Json(bmv): Json<Bestmove>) -> String {
+    println!("POST: /api/bestmove; {}, {}s", bmv.mfen, bmv.time);
+    let mut position = Position::from_str(&bmv.mfen).unwrap();
+    bestmove(&mut position, bmv.time)
 }

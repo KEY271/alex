@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Board from "./components/Board";
 import { getMoveSquares, Position } from "./utils/game";
 import { get, post } from "./utils/connect";
@@ -26,8 +26,32 @@ function App() {
         setCount((c) => c + 1);
     };
 
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (inputRef.current == undefined) {
+            return;
+        }
+        inputRef.current.value = "3";
+    }, [inputRef]);
+
     const getBestMove = async () => {
-        const res = await post("bestmove", { mfen: board.mfen() });
+        if (inputRef.current == undefined) {
+            return;
+        }
+        const value = Number.parseFloat(inputRef.current.value);
+        if (Number.isNaN(value)) {
+            alert("考慮時間が数値ではありません。");
+            return;
+        }
+        if (value < 0 || 100 < value) {
+            alert("考慮時間が適当ではありません。");
+            return;
+        }
+        const res = await post("bestmove", {
+            mfen: board.mfen(),
+            time: value
+        });
         const data = await res.text();
         console.log(data);
         await post("move", { mfen: data });
@@ -51,6 +75,8 @@ function App() {
                     className="h-12 w-24 border border-black bg-gray-200 p-2 hover:bg-[lightsalmon]">
                     最善手
                 </button>
+                <label>考慮時間(秒)</label>
+                <input ref={inputRef} className="w-16 border text-right" />
             </div>
         </div>
     );

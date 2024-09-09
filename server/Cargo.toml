@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 axum = "0.7.5"
+chrono = "0.4.38"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 rand = "0.8.5"

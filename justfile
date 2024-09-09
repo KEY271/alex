@@ -18,7 +18,7 @@ build:
 run:
     #!/bin/bash
     cd server
-    cargo run
+    cargo run --release
 test:
     #!/bin/bash
     cd server
