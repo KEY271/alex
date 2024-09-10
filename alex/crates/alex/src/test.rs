@@ -6,7 +6,7 @@ mod tests {
     use rand::{Rng, SeedableRng};
     use rand_xoshiro::Xoshiro256StarStar;
 
-    use crate::engine::{
+    use crate::{
         movegen::{is_legal, is_pseudo_legal, GenType, MoveList},
         position::Position,
         types::{

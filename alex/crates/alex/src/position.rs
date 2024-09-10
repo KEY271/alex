@@ -6,7 +6,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     change_bit,
-    engine::types::{flipped, get_capture, get_from, get_pt, PieceType},
+    types::{flipped, get_capture, get_from, get_pt, PieceType},
     for_pos, foreach_bb,
 };
 

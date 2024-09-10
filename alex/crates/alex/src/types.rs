@@ -314,7 +314,7 @@ macro_rules! foreach_bb {
     ($board:expr, $sq:ident, $e:expr) => {
         let mut bb = $board;
         while bb != 0 {
-            let $sq = crate::engine::types::get_pos(bb);
+            let $sq = crate::types::get_pos(bb);
             $e;
             bb &= bb.wrapping_sub(1);
         }

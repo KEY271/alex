@@ -6,7 +6,7 @@ use std::{
 use axum::{extract::State, Json};
 use serde::Deserialize;
 
-use crate::engine::{movegen::is_pseudo_legal, position::Position, search::bestmove};
+use alex::{movegen::is_pseudo_legal, position::Position, search::bestmove};
 
 pub async fn get_board(State(position): State<Arc<Mutex<Position>>>) -> String {
     println!("GET: /api/board");

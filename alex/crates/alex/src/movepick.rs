@@ -1,4 +1,4 @@
-use crate::engine::movegen::GenType;
+use crate::movegen::GenType;
 
 use super::{
     movegen::MoveList,
