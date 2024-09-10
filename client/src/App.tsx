@@ -52,10 +52,10 @@ function App() {
             mfen: board.mfen(),
             time: value
         });
-        const data = await res.text();
+        const data = await res.json();
         console.log(data);
-        await post("move", { mfen: data });
-        dispatch(setHistory(getMoveSquares(data)));
+        await post("move", { mfen: data.mfen });
+        dispatch(setHistory(getMoveSquares(data.mfen)));
         setCount((c) => c + 1);
     };
 

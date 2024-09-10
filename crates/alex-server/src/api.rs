@@ -36,11 +36,14 @@ pub struct MoveMfen {
 pub async fn post_move(State(position): State<Arc<Mutex<Position>>>, Json(m): Json<MoveMfen>) {
     println!("POST: /api/move; {}", m.mfen);
     let mut position = position.lock().unwrap();
-    let mv = position.read_move(m.mfen).unwrap();
-    if position.is_pseudo_legal(mv) {
-        position.do_move(mv, None);
+    if let Ok(mv) = position.read_move(m.mfen.clone()) {
+        if position.is_pseudo_legal(mv) {
+            position.do_move(mv, None);
+        } else {
+            println!("illegal move: {}", m.mfen);
+        }
     } else {
-        println!("illegal!");
+        println!("unknown move: {}", m.mfen);
     }
 }
 
