@@ -2,18 +2,16 @@ use core::fmt;
 use std::{str::FromStr, usize};
 
 use num_traits::FromPrimitive;
-use strum::IntoEnumIterator;
 
 use crate::{
-    change_bit, for_pos, foreach_bb,
-    types::{flipped, get_capture, get_from, get_pt, PieceType},
-};
-
-use super::types::{
-    count_hand, get_move_type, get_to, is_demise, make_move_drop, make_move_normal,
-    make_move_return, make_move_shoot, make_move_supply, read_file, read_rank, to_hand, Bitboard,
-    Hand, Move, MoveType, Piece, Side, Square, MOVE_DEMISE, PIECE_NB, PIECE_TYPE_NB, RANK_NB,
-    SIDE_NB, SQUARE_NB,
+    bitboard::KG_BITBOARD,
+    change_bit, foreach_bb,
+    types::{
+        count_hand, get_capture, get_from, get_move_type, get_pt, get_to, is_demise,
+        make_move_drop, make_move_normal, make_move_return, make_move_shoot, make_move_supply,
+        read_file, read_rank, to_hand, Bitboard, Hand, Move, MoveType, Piece, PieceType, Side,
+        Square, MOVE_DEMISE, PIECE_TYPE_NB, RANK_NB, SIDE_NB, SQUARE_NB,
+    },
 };
 
 /// Count of occupation.
@@ -53,7 +51,7 @@ impl StateInfo {
                     if sq2 == Square::NONE {
                         break;
                     }
-                    let line = position.between_bb[sq2 as usize][sq as usize];
+                    let line = KG_BITBOARD.between_bb[sq2 as usize][sq as usize];
                     let occ = position.pieces() & line;
                     if occ == 0 {
                         continue;
@@ -74,7 +72,7 @@ impl StateInfo {
         for i in 1..PIECE_TYPE_NB {
             let pt = PieceType::from_usize(i).unwrap();
             let p = pt.into_piece(position.side);
-            check_bb[i] = position.check_bb[p as usize][opp_crown as usize];
+            check_bb[i] = KG_BITBOARD.check_bb[p as usize][opp_crown as usize];
             match pt {
                 PieceType::Heavy => {
                     let x = i % 8;
@@ -135,220 +133,11 @@ pub struct Position {
     pub index: [usize; SQUARE_NB],
     /// Stack of StateInfo
     pub states: Vec<StateInfo>,
-
-    /// Squares the piece can move to.
-    pub movable_sq: [[Bitboard; SQUARE_NB]; PIECE_NB],
-    // Kindergarden bitboard.
-    diagonal_mask: [Bitboard; SQUARE_NB],
-    anti_diagonal_mask: [Bitboard; SQUARE_NB],
-    rank_mask: [Bitboard; SQUARE_NB],
-    fill_up_attacks: [[Bitboard; RANK_NB]; OCC_NB],
-    a_file_attacks: [[Bitboard; RANK_NB]; OCC_NB],
-    /// Line between squares.
-    pub between_bb: [[Bitboard; SQUARE_NB]; SQUARE_NB],
-    /// Line passing squares.
-    pub line_bb: [[Bitboard; SQUARE_NB]; SQUARE_NB],
-    check_bb: [[Bitboard; SQUARE_NB]; PIECE_NB],
-    /// Arrow attacks if there is no piece.
-    pub arrow_attacks: [Bitboard; SQUARE_NB],
 }
 
 impl Position {
     /// Create an empty board.
     pub fn new() -> Position {
-        let mut movable_sq = [[0; SQUARE_NB]; PIECE_NB];
-        for pt in PieceType::iter() {
-            if pt == PieceType::None {
-                continue;
-            }
-            for_pos!(ix, iy, i, {
-                let mut bb = 0;
-                for_pos!(jx, jy, j, {
-                    match pt {
-                        PieceType::None => continue,
-                        PieceType::Light | PieceType::Heavy => {
-                            if ix == jx && iy + 1 == jy
-                                || iy >= 5 && ix.abs_diff(jx) == 1 && iy == jy
-                            {
-                                change_bit!(bb, j);
-                            }
-                        }
-                        PieceType::King => {
-                            if ix.abs_diff(jx) <= 1
-                                && iy.abs_diff(jy) <= 1
-                                && !(ix == jx && iy == jy)
-                            {
-                                change_bit!(bb, j);
-                            }
-                        }
-                        PieceType::Prince => {
-                            if ix == jx && iy + 1 == jy
-                                || ix.abs_diff(jx) == 1 && iy.abs_diff(jy) == 1
-                            {
-                                change_bit!(bb, j);
-                            }
-                        }
-                        PieceType::General => {
-                            if ix.abs_diff(jx) + iy.abs_diff(jy) == 1
-                                || ix.abs_diff(jx) == 1 && iy + 1 == jy
-                            {
-                                change_bit!(bb, j);
-                            }
-                        }
-                        PieceType::Knight => {
-                            if ix.abs_diff(jx) + iy.abs_diff(jy) == 3 && ix != jx && iy != jy {
-                                change_bit!(bb, j);
-                            }
-                        }
-                        PieceType::Arrow => continue,
-                        PieceType::Archer0 | PieceType::Archer1 | PieceType::Archer2 => {
-                            if ix.abs_diff(jx) + iy.abs_diff(jy) == 1 {
-                                change_bit!(bb, j);
-                            }
-                        }
-                    }
-                });
-                movable_sq[pt.into_piece(Side::Black) as usize][i] = bb;
-                movable_sq[pt.into_piece(Side::White) as usize]
-                    [(RANK_NB - 1 - iy) * RANK_NB + ix] = flipped(bb);
-            });
-        }
-
-        let mut diagonal_mask = [0; SQUARE_NB];
-        let mut anti_diagonal_mask = [0; SQUARE_NB];
-        let mut rank_mask = [0; SQUARE_NB];
-        for_pos!(ix, iy, i, {
-            for_pos!(jx, jy, j, {
-                if ix + jy == iy + jx {
-                    change_bit!(diagonal_mask[i], j);
-                }
-                if ix + iy == jx + jy {
-                    change_bit!(anti_diagonal_mask[i], j);
-                }
-                if iy == jy {
-                    change_bit!(rank_mask[i], j);
-                }
-            });
-        });
-
-        let mut fill_up_attacks = [[0; RANK_NB]; OCC_NB];
-        for file in 0..RANK_NB {
-            for occ in 0..OCC_NB {
-                let mut u = 0;
-                // Check left of the square.
-                if file > 0 {
-                    for i in (0..file).rev() {
-                        u |= 1 << i;
-                        if (occ << 1) & (1 << i) != 0 {
-                            break;
-                        }
-                    }
-                }
-                // Check right of the square.
-                for i in file + 1..RANK_NB {
-                    u |= 1 << i;
-                    if (occ << 1) & (1 << i) != 0 {
-                        break;
-                    }
-                }
-                // Fill up.
-                u |= u << 8;
-                u |= u << 16;
-                u |= u << 32;
-                fill_up_attacks[occ][file] = u;
-            }
-        }
-        let mut a_file_attacks = [[0; RANK_NB]; OCC_NB];
-        for rank in 0..RANK_NB {
-            for occ in 0..OCC_NB {
-                let mut u = 0;
-                // Check below the square.
-                if rank > 0 {
-                    for i in (0..rank).rev() {
-                        u |= 1 << (i * RANK_NB);
-                        if (occ << 1) & (1 << i) != 0 {
-                            break;
-                        }
-                    }
-                }
-                // Check above the square.
-                for i in rank + 1..RANK_NB {
-                    u |= 1 << (i * RANK_NB);
-                    if (occ << 1) & (1 << i) != 0 {
-                        break;
-                    }
-                }
-                a_file_attacks[occ][rank] = u;
-            }
-        }
-
-        let mut between_bb = [[0; SQUARE_NB]; SQUARE_NB];
-        for_pos!(ix, iy, i, {
-            for_pos!(jx, jy, j, {
-                if i == j {
-                    continue;
-                }
-                if ix == jx || iy == jy || ix + iy == jx + jy || ix + jy == iy + jx {
-                    let d = ix.abs_diff(jx).max(iy.abs_diff(jy));
-                    for k in 1..d {
-                        let x = ix as isize + (jx as isize - ix as isize) * k as isize / d as isize;
-                        let y = iy as isize + (jy as isize - iy as isize) * k as isize / d as isize;
-                        change_bit!(between_bb[i][j], y as usize * RANK_NB + x as usize);
-                    }
-                }
-            });
-        });
-
-        let mut line_bb = [[0; SQUARE_NB]; SQUARE_NB];
-        for_pos!(ix, iy, i, {
-            for_pos!(jx, jy, j, {
-                if i == j {
-                    continue;
-                }
-                if ix == jx || iy == jy || ix + iy == jx + jy || ix + jy == iy + jx {
-                    let d = ix.abs_diff(jx).max(iy.abs_diff(jy));
-                    for k in -8..9 {
-                        let x = ix as isize + (jx as isize - ix as isize) * k / d as isize;
-                        let y = iy as isize + (jy as isize - iy as isize) * k / d as isize;
-                        if 0 <= x && x < 8 && 0 <= y && y < 8 {
-                            change_bit!(line_bb[i][j], y as usize * RANK_NB + x as usize);
-                        }
-                    }
-                }
-            });
-        });
-
-        let mut check_bb = [[0; SQUARE_NB]; PIECE_NB];
-        for pt in 1..PIECE_TYPE_NB {
-            let pt = PieceType::from_usize(pt).unwrap();
-            let p1 = pt.into_piece(Side::Black);
-            let p2 = pt.into_piece(Side::White);
-            for i in 0..SQUARE_NB {
-                for j in 0..SQUARE_NB {
-                    if movable_sq[p1 as usize][j] & (1 << i) != 0 {
-                        check_bb[p1 as usize][i] |= 1 << j;
-                    }
-                    if movable_sq[p2 as usize][j] & (1 << i) != 0 {
-                        check_bb[p2 as usize][i] |= 1 << j;
-                    }
-                }
-            }
-        }
-
-        let mut arrow_attacks = [0; SQUARE_NB];
-        for_pos!(ix, iy, i, {
-            let mut bb = 0;
-            for_pos!(jx, jy, j, {
-                if i == j {
-                    continue;
-                }
-                if ix == jx || iy == jy || ix + iy == jx + jy || ix + jy == iy + jx {
-                    change_bit!(bb, j);
-                }
-            });
-            arrow_attacks[i] = bb;
-        });
-
         Position {
             side: Side::Black,
             grid: [Piece::None; SQUARE_NB],
@@ -361,16 +150,6 @@ impl Position {
             piece_list: [[[Square::NONE; 8]; PIECE_TYPE_NB]; SIDE_NB],
             index: [8; SQUARE_NB],
             states: Vec::new(),
-            movable_sq,
-            diagonal_mask,
-            anti_diagonal_mask,
-            rank_mask,
-            fill_up_attacks,
-            a_file_attacks,
-            between_bb,
-            line_bb,
-            check_bb,
-            arrow_attacks,
         }
     }
 
@@ -391,56 +170,22 @@ impl Position {
         self.boards[pt as usize] & self.sides[side as usize]
     }
 
-    pub fn diagonal_attacks(&self, occ: u64, sq: Square) -> Bitboard {
-        let bfile = 0x0202020202020202;
-        let occ = (self.diagonal_mask[sq as usize] & occ).wrapping_mul(bfile) >> 58;
-        self.diagonal_mask[sq as usize] & self.fill_up_attacks[occ as usize][sq as usize & 7]
-    }
-
-    pub fn anti_diagonal_attacks(&self, occ: u64, sq: Square) -> Bitboard {
-        let bfile = 0x0202020202020202;
-        let occ = (self.anti_diagonal_mask[sq as usize] & occ).wrapping_mul(bfile) >> 58;
-        self.anti_diagonal_mask[sq as usize] & self.fill_up_attacks[occ as usize][sq as usize & 7]
-    }
-
-    pub fn rank_attacks(&self, occ: u64, sq: Square) -> Bitboard {
-        let bfile = 0x0202020202020202;
-        let occ = (self.rank_mask[sq as usize] & occ).wrapping_mul(bfile) >> 58;
-        self.rank_mask[sq as usize] & self.fill_up_attacks[occ as usize][sq as usize & 7]
-    }
-
-    pub fn file_attacks(&self, occ: u64, sq: Square) -> Bitboard {
-        let afile = 0x0101010101010101;
-        let diagonal_a2_h7 = 0x0004081020408000;
-        let occ = afile & (occ >> (sq as usize & 7));
-        let occ = occ.wrapping_mul(diagonal_a2_h7) >> 58;
-        self.a_file_attacks[occ as usize][sq as usize >> 3] << (sq as usize & 7)
-    }
-
     pub fn heavy_attacks(&self, side: Side) -> Bitboard {
-        if side == Side::Black {
-            let board = self.pieces_pt_side(PieceType::Heavy, Side::Black) << 8;
-            let board = board & !self.pieces();
-            board << 8
-        } else {
-            let board = self.pieces_pt_side(PieceType::Heavy, Side::White) >> 8;
-            let board = board & !self.pieces();
-            board >> 8
-        }
+        KG_BITBOARD.heavy_attacks(
+            self.pieces_pt_side(PieceType::Heavy, side),
+            self.pieces(),
+            side,
+        )
     }
 
     pub fn arrow_attacks(&self, sq: Square) -> Bitboard {
-        let occupied = self.pieces();
-        self.file_attacks(occupied, sq)
-            | self.rank_attacks(occupied, sq)
-            | self.diagonal_attacks(occupied, sq)
-            | self.anti_diagonal_attacks(occupied, sq)
+        KG_BITBOARD.arrow_attacks(self.pieces(), sq)
     }
 
     pub fn calculate_effects(&self) -> [[usize; SQUARE_NB]; SIDE_NB] {
         let mut effects = [[0; SQUARE_NB]; SIDE_NB];
         for i in 0..SQUARE_NB {
-            foreach_bb!(self.movable_sq[self.grid[i] as usize][i], sq2, {
+            foreach_bb!(KG_BITBOARD.movable_sq[self.grid[i] as usize][i], sq2, {
                 effects[self.grid[i].side() as usize][sq2 as usize] += 1;
             });
         }
@@ -448,13 +193,13 @@ impl Position {
     }
 
     fn add_effect(&mut self, sq: Square, p: Piece) {
-        foreach_bb!(self.movable_sq[p as usize][sq as usize], sq2, {
+        foreach_bb!(KG_BITBOARD.movable_sq[p as usize][sq as usize], sq2, {
             self.effects[p.side() as usize][sq2 as usize] += 1;
         });
     }
 
     fn remove_effect(&mut self, sq: Square, p: Piece) {
-        foreach_bb!(self.movable_sq[p as usize][sq as usize], sq2, {
+        foreach_bb!(KG_BITBOARD.movable_sq[p as usize][sq as usize], sq2, {
             self.effects[p.side() as usize][sq2 as usize] -= 1;
         });
     }
@@ -736,7 +481,7 @@ impl Position {
     }
 
     pub fn aligned(&self, sq1: Square, sq2: Square, sq3: Square) -> bool {
-        self.line_bb[sq1 as usize][sq2 as usize] & (1 << sq3 as usize) != 0
+        KG_BITBOARD.line_bb[sq1 as usize][sq2 as usize] & (1 << sq3 as usize) != 0
     }
 
     pub fn calculate_checkers(&self) -> Bitboard {
@@ -747,7 +492,7 @@ impl Position {
             if p == Piece::None || p.side() == self.side {
                 continue;
             }
-            foreach_bb!(self.movable_sq[p as usize][i], sq2, {
+            foreach_bb!(KG_BITBOARD.movable_sq[p as usize][i], sq2, {
                 if sq2 == crown {
                     checkers |= 1 << i;
                 }

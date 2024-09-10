@@ -62,18 +62,6 @@ pub fn read_rank(c: u8) -> Result<usize, String> {
     return Ok(y);
 }
 
-#[macro_export]
-macro_rules! for_pos {
-    ($ix:ident, $iy:ident, $i:ident, $e:expr) => {
-        for $iy in 0..RANK_NB {
-            for $ix in 0..RANK_NB {
-                let $i = $iy * RANK_NB + $ix;
-                $e;
-            }
-        }
-    };
-}
-
 /// Type of the piece.
 #[derive(FromPrimitive, EnumIter, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[repr(usize)]
@@ -319,15 +307,6 @@ macro_rules! foreach_bb {
             bb &= bb.wrapping_sub(1);
         }
     };
-}
-
-/// Returns a y-flipped bitboard.
-pub fn flipped(bb: Bitboard) -> Bitboard {
-    let mut new_bb = 0;
-    for i in 0..RANK_NB {
-        new_bb ^= ((bb >> (i * RANK_NB)) & 0xFF) << (SQUARE_NB - RANK_NB - i * RANK_NB);
-    }
-    new_bb
 }
 
 /// Move.

@@ -4,16 +4,12 @@ use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 
 use crate::{
+    bitboard::KG_BITBOARD,
     change_bit, foreach_bb,
-    types::{
-        make_move_drop, make_move_normal, make_move_return, make_move_shoot, make_move_supply,
-    },
-};
-
-use super::{
     position::Position,
     types::{
-        bit, get_from, get_move_type, get_pt, get_to, is_demise, Bitboard, ExtMove, Move, MoveType,
+        bit, get_from, get_move_type, get_pt, get_to, is_demise, make_move_drop, make_move_normal,
+        make_move_return, make_move_shoot, make_move_supply, Bitboard, ExtMove, Move, MoveType,
         Piece, PieceType, Side, Square, MOVE_DEMISE, RANK_NB,
     },
 };
@@ -84,7 +80,7 @@ impl MoveList {
             }
             foreach_bb!(position.pieces_pt_side(pt, position.side), sq, {
                 let movable_sq =
-                    position.movable_sq[pt.into_piece(position.side) as usize][sq as usize];
+                    KG_BITBOARD.movable_sq[pt.into_piece(position.side) as usize][sq as usize];
                 foreach_bb!(movable_sq & target, sq2, {
                     self.push(make_move_normal(
                         position.grid[sq2 as usize].split().0,
@@ -252,12 +248,12 @@ impl MoveList {
             }
             if pt == PieceType::Archer1 || pt == PieceType::Archer2 {
                 arrow_check = true;
-                attacks |= position.line_bb[c as usize][crown_sq as usize];
-                attacks |= position.movable_sq[position.grid[c as usize] as usize][c as usize];
+                attacks |= KG_BITBOARD.line_bb[c as usize][crown_sq as usize];
+                attacks |= KG_BITBOARD.movable_sq[position.grid[c as usize] as usize][c as usize];
             }
         });
         let crown_evasion =
-            position.movable_sq[position.grid[crown_sq as usize] as usize][crown_sq as usize];
+            KG_BITBOARD.movable_sq[position.grid[crown_sq as usize] as usize][crown_sq as usize];
         foreach_bb!(
             crown_evasion & !attacks & !position.pieces_side(position.side),
             sq,
@@ -269,7 +265,8 @@ impl MoveList {
 
         if checkers_count == 1 {
             let target = if arrow_check {
-                (1 << checker as usize) | position.between_bb[checker as usize][crown_sq as usize]
+                (1 << checker as usize)
+                    | KG_BITBOARD.between_bb[checker as usize][crown_sq as usize]
             } else {
                 1 << checker as usize
             };
@@ -343,7 +340,11 @@ pub fn is_pseudo_legal(position: &Position, mv: Move) -> bool {
                 if position.grid[mid] != Piece::None {
                     return false;
                 }
-            } else if bit(position.movable_sq[p as usize][from as usize], to as usize) != 1 {
+            } else if bit(
+                KG_BITBOARD.movable_sq[p as usize][from as usize],
+                to as usize,
+            ) != 1
+            {
                 return false;
             }
         }

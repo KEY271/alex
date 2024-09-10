@@ -6,30 +6,25 @@ dev:
     npm run dev
 server:
     #!/bin/bash
-    cd alex
     cargo watch -x "run --bin alex-server -- --server-only"
 cli:
     #!/bin/bash
-    cd alex
     cargo watch -x "run --bin alex-cli"
 build:
     #!/bin/bash
     cd client
     npm run build
     cd ..
-    mkdir ./alex/static
-    cp -r ./client/dist/* ./alex/static
+    mkdir ./static
+    cp -r ./client/dist/* ./static
 run:
     #!/bin/bash
-    cd alex
-    cargo run --release
+    cargo run --bin alex-server --release
 test:
     #!/bin/bash
-    cd alex
     cargo test
 fmt:
     #!/bin/bash
-    cd alex
     cargo fmt
     cd ../client
     npx prettier . --write
