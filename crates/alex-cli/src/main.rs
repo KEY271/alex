@@ -4,8 +4,8 @@ use alex::{position::Position, search::search, types::move_to_mfen};
 use nom::{
     branch::alt,
     bytes::complete::{is_a, tag},
-    character::complete::{space0, space1},
-    combinator::value,
+    character::complete::{space0, space1, u32},
+    combinator::{opt, value},
     multi::separated_list0,
     number::complete::double,
     IResult,
@@ -17,6 +17,7 @@ enum Command {
     NewGame,
     Position(String, Vec<String>),
     Go(f64),
+    Perft(usize, bool),
 }
 
 fn umi(s: &str) -> IResult<&str, Command> {
@@ -77,8 +78,17 @@ fn go(s: &str) -> IResult<&str, Command> {
     Ok((s, Command::Go(time)))
 }
 
+fn perft(s: &str) -> IResult<&str, Command> {
+    let (s, _) = tag("perft")(s)?;
+    let (s, _) = space1(s)?;
+    let (s, depth) = u32(s)?;
+    let (s, _) = space0(s)?;
+    let (s, debug) = opt(tag("debug"))(s)?;
+    Ok((s, Command::Perft(depth as usize, debug.is_some())))
+}
+
 fn command(s: &str) -> IResult<&str, Command> {
-    alt((umi, isready, new_game, position, go))(s)
+    alt((umi, isready, new_game, position, go, perft))(s)
 }
 
 fn main() {
@@ -115,6 +125,12 @@ fn main() {
                         } else {
                             println!("bestmove resign");
                         }
+                    }
+                }
+                Command::Perft(depth, debug) => {
+                    if let Some(position) = &mut position {
+                        let nodes = alex::perft::perft(position, depth, debug);
+                        println!("nodes: {}", nodes);
                     }
                 }
             }

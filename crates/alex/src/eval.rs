@@ -25,6 +25,7 @@ const PARAM_OUR_EFFECT_PIECE_VALUE_2: i32 = 30;
 const PARAM_OPP_EFFECT_PIECE_VALUE_1: i32 = 30;
 const PARAM_OPP_EFFECT_PIECE_VALUE_2: i32 = 30;
 const PARAM_HAND_PIECE_VALUE: i32 = 200;
+const PARAM_DEMISE_VALUE: i16 = 200;
 
 static KKPEE: LazyLock<Vec<Value>> = LazyLock::new(|| init_kkpee());
 
@@ -168,6 +169,9 @@ pub fn eval(position: &Position) -> Value {
             white_effects[sq].min(2),
         )];
     }
+
+    value -= PARAM_DEMISE_VALUE * position.demise[Side::Black as usize] as Value;
+    value += PARAM_DEMISE_VALUE * position.demise[Side::White as usize] as Value;
 
     if position.side == Side::Black {
         value
