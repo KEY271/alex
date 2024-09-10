@@ -135,13 +135,13 @@ impl MoveList {
     }
 
     /// Generates drop moves.
-    fn generate_move_drop(&mut self, position: &Position) {
+    fn generate_move_drop(&mut self, position: &Position, target: Bitboard) {
         let mask = if position.side == Side::Black {
             0x000000FFFFFFFFFF
         } else {
             0xFFFFFFFFFF000000
         };
-        let bb = !position.pieces() & mask;
+        let bb = !position.pieces() & mask & target;
 
         if position.count_hand(position.side, PieceType::Light) != 0 {
             foreach_bb!(bb, sq, { self.push(make_move_drop(PieceType::Light, sq)) });
@@ -191,7 +191,7 @@ impl MoveList {
         self.generate_move_normal(position, target);
         self.generate_move_shoot(position, target);
         self.generate_move_return(position);
-        self.generate_move_drop(position);
+        self.generate_move_drop(position, 0xFFFFFFFFFFFFFFFF);
         self.generate_move_supply(position);
     }
 
@@ -228,12 +228,13 @@ impl MoveList {
             attacks |= position.arrow_attacks(sq);
         });
         let mut checker = Square::NONE;
-        let mut arrow_check = false;
+        let mut slide_check = false;
         foreach_bb!(position.checkers(), c, {
             checkers_count += 1;
             checker = c;
             let pt = position.grid[c as usize].pt();
             if pt == PieceType::Heavy {
+                slide_check = true;
                 let x = checker as usize % 8;
                 let y1 = checker as usize / 8;
                 let y2 = crown_sq as usize / 8;
@@ -247,7 +248,7 @@ impl MoveList {
                 }
             }
             if pt == PieceType::Archer1 || pt == PieceType::Archer2 {
-                arrow_check = true;
+                slide_check = true;
                 attacks |= KG_BITBOARD.line_bb[c as usize][crown_sq as usize];
                 attacks |= KG_BITBOARD.movable_sq[position.grid[c as usize] as usize][c as usize];
             }
@@ -264,7 +265,7 @@ impl MoveList {
         );
 
         if checkers_count == 1 {
-            let target = if arrow_check {
+            let target = if slide_check {
                 (1 << checker as usize)
                     | KG_BITBOARD.between_bb[checker as usize][crown_sq as usize]
             } else {
@@ -272,6 +273,7 @@ impl MoveList {
             };
             self.generate_move_normal(position, target);
             self.generate_move_shoot(position, target);
+            self.generate_move_drop(position, target);
         }
     }
 
