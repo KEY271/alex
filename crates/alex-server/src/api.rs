@@ -4,9 +4,13 @@ use std::{
 };
 
 use axum::{extract::State, Json};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-use alex::{movegen::is_pseudo_legal, position::Position, search::bestmove};
+use alex::{
+    position::Position,
+    search::search,
+    types::{move_to_mfen, Value},
+};
 
 pub async fn get_board(State(position): State<Arc<Mutex<Position>>>) -> String {
     println!("GET: /api/board");
@@ -33,7 +37,7 @@ pub async fn post_move(State(position): State<Arc<Mutex<Position>>>, Json(m): Js
     println!("POST: /api/move; {}", m.mfen);
     let mut position = position.lock().unwrap();
     let mv = position.read_move(m.mfen).unwrap();
-    if is_pseudo_legal(&position, mv) {
+    if position.is_pseudo_legal(mv) {
         position.do_move(mv, None);
     } else {
         println!("illegal!");
@@ -41,13 +45,32 @@ pub async fn post_move(State(position): State<Arc<Mutex<Position>>>, Json(m): Js
 }
 
 #[derive(Deserialize)]
-pub struct Bestmove {
+pub struct Go {
     mfen: String,
     time: f64,
 }
 
-pub async fn post_bestmove(Json(bmv): Json<Bestmove>) -> String {
+#[derive(Serialize)]
+pub struct Bestmove {
+    mfen: String,
+    depth: usize,
+    value: Value,
+}
+
+pub async fn post_bestmove(Json(bmv): Json<Go>) -> Json<Bestmove> {
     println!("POST: /api/bestmove; {}, {}s", bmv.mfen, bmv.time);
     let mut position = Position::from_str(&bmv.mfen).unwrap();
-    bestmove(&mut position, bmv.time)
+    if let Some(info) = search(&mut position, bmv.time) {
+        Json(Bestmove {
+            mfen: move_to_mfen(info.mv, position.side),
+            depth: info.depth,
+            value: info.value,
+        })
+    } else {
+        Json(Bestmove {
+            mfen: "resign".to_string(),
+            depth: 0,
+            value: 0,
+        })
+    }
 }

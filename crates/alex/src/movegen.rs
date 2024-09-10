@@ -284,7 +284,7 @@ impl MoveList {
         }
         let mut legal_moves = Vec::new();
         for mv in self.slice(0) {
-            if is_legal(position, mv.mv) {
+            if position.is_legal(mv.mv) {
                 legal_moves.push(mv.clone());
             }
         }
@@ -312,166 +312,169 @@ impl MoveList {
     }
 }
 
-pub fn is_pseudo_legal(position: &Position, mv: Move) -> bool {
-    let typ = get_move_type(mv);
-    let to = get_to(mv);
-    if is_demise(mv) {
-        if position.demise[position.side as usize] >= 2 {
-            return false;
-        }
-        if mv == MOVE_DEMISE {
-            return true;
-        }
-    }
-    match typ {
-        MoveType::Normal => {
-            let (pt, side) = position.grid[to as usize].split();
-            if pt != PieceType::None && side == position.side {
+impl Position {
+    pub fn is_pseudo_legal(&self, mv: Move) -> bool {
+        let typ = get_move_type(mv);
+        let to = get_to(mv);
+        if is_demise(mv) {
+            if self.demise[self.side as usize] >= 2 {
                 return false;
             }
-
-            let from = get_from(mv);
-            let p = position.grid[from as usize];
-            if p == Piece::None || p.side() != position.side {
-                return false;
+            if mv == MOVE_DEMISE {
+                return true;
             }
-            if p.pt() == PieceType::Heavy && (from as usize).abs_diff(to as usize) == RANK_NB * 2 {
-                let mid = (from as usize + to as usize) / 2;
-                if position.grid[mid] != Piece::None {
+        }
+        match typ {
+            MoveType::Normal => {
+                let (pt, side) = self.grid[to as usize].split();
+                if pt != PieceType::None && side == self.side {
                     return false;
                 }
-            } else if bit(
-                KG_BITBOARD.movable_sq[p as usize][from as usize],
-                to as usize,
-            ) != 1
-            {
-                return false;
-            }
-        }
-        MoveType::Return => {
-            let (pt, side) = position.grid[to as usize].split();
-            if !(pt == PieceType::Archer0 || pt == PieceType::Archer1) || side != position.side {
-                return false;
-            }
 
-            let from = get_from(mv) as usize;
-            let (pt, side) = position.grid[from].split();
-            if pt != PieceType::Arrow || side != position.side {
-                return false;
-            }
-
-            let x1 = from % RANK_NB;
-            let y1 = from / RANK_NB;
-            let x2 = to as usize % RANK_NB;
-            let y2 = to as usize / RANK_NB;
-            let dist = max(x1.abs_diff(x2), y1.abs_diff(y2));
-            if x1.abs_diff(x2) != dist && x1 != x2 {
-                return false;
-            }
-            if y1.abs_diff(y2) != dist && y1 != y2 {
-                return false;
-            }
-            for i in 1..dist {
-                let x = x1 as isize + (x2 as isize - x1 as isize) / dist as isize * i as isize;
-                let y = y1 as isize + (y2 as isize - y1 as isize) / dist as isize * i as isize;
-                if position.grid[y as usize * RANK_NB + x as usize] != Piece::None {
+                let from = get_from(mv);
+                let p = self.grid[from as usize];
+                if p == Piece::None || p.side() != self.side {
                     return false;
                 }
-            }
-        }
-        MoveType::Shoot => {
-            let (pt, side) = position.grid[to as usize].split();
-            if pt != PieceType::None && side == position.side {
-                return false;
-            }
-
-            let from = get_from(mv) as usize;
-            let (pt, side) = position.grid[from].split();
-            if !(pt == PieceType::Archer1 || pt == PieceType::Archer2) || side != position.side {
-                return false;
-            }
-
-            let x1 = from % RANK_NB;
-            let y1 = from / RANK_NB;
-            let x2 = to as usize % RANK_NB;
-            let y2 = to as usize / RANK_NB;
-            let dist = max(x1.abs_diff(x2), y1.abs_diff(y2));
-            if x1.abs_diff(x2) != dist && x1 != x2 {
-                return false;
-            }
-            if y1.abs_diff(y2) != dist && y1 != y2 {
-                return false;
-            }
-            for i in 1..dist {
-                let x = x1 as isize + (x2 as isize - x1 as isize) / dist as isize * i as isize;
-                let y = y1 as isize + (y2 as isize - y1 as isize) / dist as isize * i as isize;
-                if position.grid[y as usize * RANK_NB + x as usize] != Piece::None {
-                    return false;
-                }
-            }
-        }
-        MoveType::Drop => {
-            let pt = get_pt(mv);
-            if pt == PieceType::Archer1 {
-                if position.count_hand(position.side, PieceType::Archer0) == 0
-                    || position.count_hand(position.side, PieceType::Arrow) == 0
+                if p.pt() == PieceType::Heavy
+                    && (from as usize).abs_diff(to as usize) == RANK_NB * 2
+                {
+                    let mid = (from as usize + to as usize) / 2;
+                    if self.grid[mid] != Piece::None {
+                        return false;
+                    }
+                } else if bit(
+                    KG_BITBOARD.movable_sq[p as usize][from as usize],
+                    to as usize,
+                ) != 1
                 {
                     return false;
                 }
-            } else if pt == PieceType::Archer2 {
-                if position.count_hand(position.side, PieceType::Archer0) == 0
-                    || position.count_hand(position.side, PieceType::Arrow) <= 1
-                {
+            }
+            MoveType::Return => {
+                let (pt, side) = self.grid[to as usize].split();
+                if !(pt == PieceType::Archer0 || pt == PieceType::Archer1) || side != self.side {
                     return false;
                 }
-            } else if position.count_hand(position.side, pt) == 0 {
-                return false;
-            }
 
-            if position.grid[to as usize] != Piece::None {
-                return false;
+                let from = get_from(mv) as usize;
+                let (pt, side) = self.grid[from].split();
+                if pt != PieceType::Arrow || side != self.side {
+                    return false;
+                }
+
+                let x1 = from % RANK_NB;
+                let y1 = from / RANK_NB;
+                let x2 = to as usize % RANK_NB;
+                let y2 = to as usize / RANK_NB;
+                let dist = max(x1.abs_diff(x2), y1.abs_diff(y2));
+                if x1.abs_diff(x2) != dist && x1 != x2 {
+                    return false;
+                }
+                if y1.abs_diff(y2) != dist && y1 != y2 {
+                    return false;
+                }
+                for i in 1..dist {
+                    let x = x1 as isize + (x2 as isize - x1 as isize) / dist as isize * i as isize;
+                    let y = y1 as isize + (y2 as isize - y1 as isize) / dist as isize * i as isize;
+                    if self.grid[y as usize * RANK_NB + x as usize] != Piece::None {
+                        return false;
+                    }
+                }
+            }
+            MoveType::Shoot => {
+                let (pt, side) = self.grid[to as usize].split();
+                if pt != PieceType::None && side == self.side {
+                    return false;
+                }
+
+                let from = get_from(mv) as usize;
+                let (pt, side) = self.grid[from].split();
+                if !(pt == PieceType::Archer1 || pt == PieceType::Archer2) || side != self.side {
+                    return false;
+                }
+
+                let x1 = from % RANK_NB;
+                let y1 = from / RANK_NB;
+                let x2 = to as usize % RANK_NB;
+                let y2 = to as usize / RANK_NB;
+                let dist = max(x1.abs_diff(x2), y1.abs_diff(y2));
+                if x1.abs_diff(x2) != dist && x1 != x2 {
+                    return false;
+                }
+                if y1.abs_diff(y2) != dist && y1 != y2 {
+                    return false;
+                }
+                for i in 1..dist {
+                    let x = x1 as isize + (x2 as isize - x1 as isize) / dist as isize * i as isize;
+                    let y = y1 as isize + (y2 as isize - y1 as isize) / dist as isize * i as isize;
+                    if self.grid[y as usize * RANK_NB + x as usize] != Piece::None {
+                        return false;
+                    }
+                }
+            }
+            MoveType::Drop => {
+                let pt = get_pt(mv);
+                if pt == PieceType::Archer1 {
+                    if self.count_hand(self.side, PieceType::Archer0) == 0
+                        || self.count_hand(self.side, PieceType::Arrow) == 0
+                    {
+                        return false;
+                    }
+                } else if pt == PieceType::Archer2 {
+                    if self.count_hand(self.side, PieceType::Archer0) == 0
+                        || self.count_hand(self.side, PieceType::Arrow) <= 1
+                    {
+                        return false;
+                    }
+                } else if self.count_hand(self.side, pt) == 0 {
+                    return false;
+                }
+
+                if self.grid[to as usize] != Piece::None {
+                    return false;
+                }
+            }
+            MoveType::Supply => {
+                if self.count_hand(self.side, PieceType::Arrow) == 0 {
+                    return false;
+                }
+
+                let (pt, side) = self.grid[to as usize].split();
+                if !(pt == PieceType::Archer0 || pt == PieceType::Archer1) || side != self.side {
+                    return false;
+                }
             }
         }
-        MoveType::Supply => {
-            if position.count_hand(position.side, PieceType::Arrow) == 0 {
-                return false;
-            }
-
-            let (pt, side) = position.grid[to as usize].split();
-            if !(pt == PieceType::Archer0 || pt == PieceType::Archer1) || side != position.side {
-                return false;
-            }
-        }
+        true
     }
-    true
-}
 
-pub fn is_legal(position: &Position, mv: Move) -> bool {
-    match get_move_type(mv) {
-        MoveType::Normal | MoveType::Return => {
-            let from = get_from(mv);
-            let to = get_to(mv);
-            let demise =
-                position.demise[position.side as usize] + if is_demise(mv) { 1 } else { 0 };
-            let (blockers, crown_sq) = if demise % 2 == 0 {
-                (
-                    position.blockers_king(),
-                    position.piece_list[position.side as usize][PieceType::King as usize][0],
-                )
-            } else {
-                (
-                    position.blockers_prince(),
-                    position.piece_list[position.side as usize][PieceType::Prince as usize][0],
-                )
-            };
-            if from == crown_sq {
-                !position.is_attacked(to, position.side)
-            } else if blockers & (1 << from as usize) != 0 {
-                position.aligned(from, to, crown_sq)
-            } else {
-                true
+    pub fn is_legal(&self, mv: Move) -> bool {
+        match get_move_type(mv) {
+            MoveType::Normal | MoveType::Return => {
+                let from = get_from(mv);
+                let to = get_to(mv);
+                let demise = self.demise[self.side as usize] + if is_demise(mv) { 1 } else { 0 };
+                let (blockers, crown_sq) = if demise % 2 == 0 {
+                    (
+                        self.blockers_king(),
+                        self.piece_list[self.side as usize][PieceType::King as usize][0],
+                    )
+                } else {
+                    (
+                        self.blockers_prince(),
+                        self.piece_list[self.side as usize][PieceType::Prince as usize][0],
+                    )
+                };
+                if from == crown_sq {
+                    !self.is_attacked(to, self.side)
+                } else if blockers & (1 << from as usize) != 0 {
+                    self.aligned(from, to, crown_sq)
+                } else {
+                    true
+                }
             }
+            _ => true,
         }
-        _ => true,
     }
 }

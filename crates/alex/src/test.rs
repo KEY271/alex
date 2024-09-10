@@ -7,7 +7,7 @@ mod tests {
     use rand_xoshiro::Xoshiro256StarStar;
 
     use crate::{
-        movegen::{is_legal, is_pseudo_legal, GenType, MoveList},
+        movegen::{GenType, MoveList},
         position::Position,
         types::{
             bit, move_to_mfen, PieceType, Side, Square, PIECE_TYPE_NB, RANK_NB, SIDE_NB, SQUARE_NB,
@@ -157,11 +157,11 @@ mod tests {
             let mut illegal = false;
             for i in 0..list.size {
                 let mv = list.at(i).mv;
-                if !is_pseudo_legal(&position, mv) {
+                if !position.is_pseudo_legal(mv) {
                     println!("mv: {}", move_to_mfen(mv, position.side));
                     illegal = true;
                 }
-                if !is_legal(&position, mv) {
+                if !position.is_legal(mv) {
                     println!("mv: {}", move_to_mfen(mv, position.side));
                     illegal = true;
                 }

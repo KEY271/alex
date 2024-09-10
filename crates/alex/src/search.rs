@@ -2,10 +2,10 @@ use chrono::{DateTime, Local, TimeDelta};
 
 use super::{
     eval::eval,
-    movegen::{is_legal, GenType, MoveList},
+    movegen::{GenType, MoveList},
     movepick::MovePicker,
     position::Position,
-    types::{move_to_mfen, Move, Value, MAX_PLY, VALUE_INF, VALUE_WIN},
+    types::{Move, Value, MAX_PLY, VALUE_INF, VALUE_WIN},
 };
 
 struct TimeKeeper {
@@ -29,7 +29,13 @@ impl TimeKeeper {
     }
 }
 
-fn search(position: &mut Position, time: f64) -> Option<Move> {
+pub struct SearchInfo {
+    pub mv: Move,
+    pub depth: usize,
+    pub value: Value,
+}
+
+pub fn search(position: &mut Position, time: f64) -> Option<SearchInfo> {
     let keeper = TimeKeeper::new(time);
     let mut moves = MoveList::new();
     moves.generate(position, GenType::Legal);
@@ -44,10 +50,8 @@ fn search(position: &mut Position, time: f64) -> Option<Move> {
         }
         depth += 1;
     }
-    println!("Depth: {}", depth);
     if let Some((mv, value)) = result.into_iter().max_by_key(|v| v.1) {
-        println!("Value: {}", value);
-        Some(mv)
+        Some(SearchInfo { mv, depth, value })
     } else {
         None
     }
@@ -108,7 +112,7 @@ fn search_node(
     loop {
         let mv = picker.next_move(position);
         if let Some(mv) = mv {
-            if !is_legal(position, mv) {
+            if !position.is_legal(mv) {
                 continue;
             }
             move_count += 1;
@@ -166,7 +170,7 @@ fn qsearch(
     loop {
         let mv = picker.next_move(position);
         if let Some(mv) = mv {
-            if !is_legal(position, mv) {
+            if !position.is_legal(mv) {
                 continue;
             }
             move_count += 1;
@@ -197,14 +201,5 @@ fn qsearch(
         }
     } else {
         bestvalue
-    }
-}
-
-pub fn bestmove(position: &mut Position, time: f64) -> String {
-    let mv = search(position, time);
-    if let Some(mv) = mv {
-        move_to_mfen(mv, position.side)
-    } else {
-        "S".to_string()
     }
 }

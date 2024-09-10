@@ -20,11 +20,7 @@ build:
 run:
     #!/bin/bash
     cargo run --bin alex-server --release
-test:
-    #!/bin/bash
-    cargo test
 fmt:
     #!/bin/bash
-    cargo fmt
-    cd ../client
+    cd client
     npx prettier . --write
