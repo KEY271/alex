@@ -35,6 +35,9 @@ function App() {
         inputRef.current.value = "3";
     }, [inputRef]);
 
+    const [score, setScore] = useState(0);
+    const [depth, setDepth] = useState(0);
+
     const getBestMove = async () => {
         if (inputRef.current == undefined) {
             return;
@@ -48,16 +51,32 @@ function App() {
             alert("考慮時間が適当ではありません。");
             return;
         }
+        setCountdown(value);
+        setScore(0);
+        setDepth(0);
         const res = await post("bestmove", {
             mfen: board.mfen(),
             time: value
         });
         const data = await res.json();
-        console.log(data);
         await post("move", { mfen: data.mfen });
+        setScore(data.value);
+        setDepth(data.depth);
+        setCountdown(0);
         dispatch(setHistory(getMoveSquares(data.mfen)));
         setCount((c) => c + 1);
     };
+
+    const [countdown, setCountdown] = useState(0);
+    useEffect(() => {
+        if (countdown <= 0) {
+            return;
+        }
+        const id = setInterval(() => {
+            setCountdown((c) => c - 0.1);
+        }, 100);
+        return () => clearInterval(id);
+    }, [countdown]);
 
     return (
         <div className="grid h-full grid-cols-[360px_1fr] sm:grid-cols-[520px_1fr]">
@@ -77,6 +96,9 @@ function App() {
                 </button>
                 <label>考慮時間(秒)</label>
                 <input ref={inputRef} className="w-16 border text-right" />
+                <div>{countdown.toFixed(1)}</div>
+                <div>評価値: {score}</div>
+                <div>読んだ手: {depth}</div>
             </div>
         </div>
     );
