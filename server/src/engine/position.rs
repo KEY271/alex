@@ -6,11 +6,11 @@ use strum::IntoEnumIterator;
 
 use crate::{
     change_bit,
-    engine::util::{flipped, get_capture, get_from, get_pt, PieceType},
+    engine::types::{flipped, get_capture, get_from, get_pt, PieceType},
     for_pos, foreach_bb,
 };
 
-use super::util::{
+use super::types::{
     count_hand, get_move_type, get_to, is_demise, make_move_drop, make_move_normal,
     make_move_return, make_move_shoot, make_move_supply, read_file, read_rank, to_hand, Bitboard,
     Hand, Move, MoveType, Piece, Side, Square, MOVE_DEMISE, PIECE_NB, PIECE_TYPE_NB, RANK_NB,

@@ -5,7 +5,7 @@ use super::{
     movegen::{is_legal, GenType, MoveList},
     movepick::MovePicker,
     position::Position,
-    util::{move_to_mfen, Move, Value, VALUE_INF},
+    types::{move_to_mfen, Move, Value, MAX_PLY, VALUE_INF, VALUE_WIN},
 };
 
 struct TimeKeeper {
@@ -37,15 +37,20 @@ fn search(position: &mut Position, time: f64) -> Option<Move> {
     let mut result = Vec::new();
     loop {
         let res = search_root(&moves, position, -VALUE_INF, VALUE_INF, depth, &keeper);
-        if !keeper.passed() {
-            result = res;
-        } else {
+        if keeper.passed() {
             break;
+        } else {
+            result = res;
         }
         depth += 1;
     }
     println!("Depth: {}", depth);
-    result.into_iter().max_by_key(|v| v.1).map(|x| x.0)
+    if let Some((mv, value)) = result.into_iter().max_by_key(|v| v.1) {
+        println!("Value: {}", value);
+        Some(mv)
+    } else {
+        None
+    }
 }
 
 fn search_root(
@@ -88,23 +93,25 @@ fn search_node(
     keeper: &TimeKeeper,
 ) -> Value {
     if keeper.passed() {
-        return VALUE_INF;
+        return 0;
     }
 
     if depth <= 0 {
-        return eval(position);
+        return qsearch(position, alpha, beta, 0, keeper);
     }
 
     let mut bestvalue = -VALUE_INF;
     let mut alpha = alpha;
 
     let mut picker = MovePicker::new(position);
+    let mut move_count = 0;
     loop {
         let mv = picker.next_move(position);
         if let Some(mv) = mv {
             if !is_legal(position, mv) {
                 continue;
             }
+            move_count += 1;
 
             position.do_move(mv, None);
             let ev = -search_node(position, -beta, -alpha, depth - 1, keeper);
@@ -124,7 +131,73 @@ fn search_node(
         }
     }
 
-    bestvalue
+    if move_count == 0 {
+        -VALUE_WIN
+    } else {
+        bestvalue
+    }
+}
+
+fn qsearch(
+    position: &mut Position,
+    alpha: Value,
+    beta: Value,
+    ply: usize,
+    keeper: &TimeKeeper,
+) -> Value {
+    if keeper.passed() || ply >= MAX_PLY {
+        return 0;
+    }
+
+    // Pruning by an evaluation.
+    let stand_pat = eval(position);
+    if stand_pat >= beta {
+        return stand_pat;
+    }
+    let mut alpha = alpha;
+    if stand_pat > alpha {
+        alpha = stand_pat;
+    }
+
+    let mut bestvalue = -VALUE_INF;
+
+    let mut picker = MovePicker::qsearch();
+    let mut move_count = 0;
+    loop {
+        let mv = picker.next_move(position);
+        if let Some(mv) = mv {
+            if !is_legal(position, mv) {
+                continue;
+            }
+            move_count += 1;
+
+            position.do_move(mv, None);
+            let ev = -qsearch(position, -beta, -alpha, ply + 1, keeper);
+            position.undo_move(mv);
+
+            if ev > bestvalue {
+                bestvalue = ev;
+            }
+            if ev > alpha {
+                alpha = ev;
+            }
+            if alpha >= beta {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    if move_count == 0 {
+        if position.checkers() != 0 {
+            -VALUE_WIN
+        } else {
+            stand_pat
+        }
+    } else {
+        bestvalue
+    }
 }
 
 pub fn bestmove(position: &mut Position, time: f64) -> String {

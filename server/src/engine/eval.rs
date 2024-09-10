@@ -4,16 +4,13 @@ use crate::foreach_bb;
 
 use super::{
     position::Position,
-    util::{PieceType, Value, PIECE_TYPE_NB, SQUARE_NB},
+    types::{PieceType, Value, PIECE_TYPE_NB, SQUARE_NB},
 };
 
 //                                                 NONE  L    H    K    P    G    N    R    A0   A1   A2
 // Value of a piece.
 #[rustfmt::skip]
-const PIECE_VALUES: [Value; PIECE_TYPE_NB]      = [0,    100, 200, 800, 600, 400, 400, 200, 200, 500, 600];
-// Value of a piece in hand.
-#[rustfmt::skip]
-const PIECE_VALUES_HAND: [Value; PIECE_TYPE_NB] = [0,    100, 200, 0,   0,   400, 400, 250, 200, 0,   0];
+const PIECE_VALUES: [Value; PIECE_TYPE_NB]      = [0,    100, 200, 800, 600, 400, 400, 400, 400, 800, 1200];
 
 // Value of an effect.
 const EFFECT: Value = 10;
@@ -35,8 +32,8 @@ pub fn eval(position: &Position) -> Value {
             && pt != PieceType::Archer1
             && pt != PieceType::Archer2
         {
-            value += PIECE_VALUES_HAND[i] * position.count_hand(position.side, pt) as Value;
-            value -= PIECE_VALUES_HAND[i] * position.count_hand(!position.side, pt) as Value;
+            value += PIECE_VALUES[i] * position.count_hand(position.side, pt) as Value;
+            value -= PIECE_VALUES[i] * position.count_hand(!position.side, pt) as Value;
         }
     }
     let mut our_effects = position.effects[position.side as usize];

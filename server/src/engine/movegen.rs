@@ -5,7 +5,7 @@ use strum::IntoEnumIterator;
 
 use crate::{
     change_bit,
-    engine::util::{
+    engine::types::{
         make_move_drop, make_move_normal, make_move_return, make_move_shoot, make_move_supply,
     },
     foreach_bb,
@@ -13,7 +13,7 @@ use crate::{
 
 use super::{
     position::Position,
-    util::{
+    types::{
         bit, get_from, get_move_type, get_pt, get_to, is_demise, Bitboard, ExtMove, Move, MoveType,
         Piece, PieceType, Side, Square, MOVE_DEMISE, RANK_NB,
     },

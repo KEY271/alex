@@ -314,7 +314,7 @@ macro_rules! foreach_bb {
     ($board:expr, $sq:ident, $e:expr) => {
         let mut bb = $board;
         while bb != 0 {
-            let $sq = crate::engine::util::get_pos(bb);
+            let $sq = crate::engine::types::get_pos(bb);
             $e;
             bb &= bb.wrapping_sub(1);
         }
@@ -462,3 +462,6 @@ impl Eq for ExtMove {}
 pub type Value = i16;
 
 pub const VALUE_INF: i16 = 32001;
+pub const VALUE_WIN: i16 = 20000;
+
+pub const MAX_PLY: usize = 256;

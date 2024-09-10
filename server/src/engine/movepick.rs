@@ -3,7 +3,7 @@ use crate::engine::movegen::GenType;
 use super::{
     movegen::MoveList,
     position::Position,
-    util::{get_capture, ExtMove, Move, PIECE_TYPE_NB},
+    types::{get_capture, ExtMove, Move, PIECE_TYPE_NB},
 };
 
 enum Stage {
@@ -13,6 +13,8 @@ enum Stage {
     NonCaptures,
     EvasionInit,
     Evasion,
+    QuietInit,
+    Quiet,
 }
 
 pub struct MovePicker {
@@ -71,6 +73,14 @@ impl MovePicker {
         }
     }
 
+    pub fn qsearch() -> Self {
+        MovePicker {
+            cur: 0,
+            moves: MoveList::new(),
+            stage: Stage::QuietInit,
+        }
+    }
+
     pub fn next_move(&mut self, position: &Position) -> Option<Move> {
         loop {
             match self.stage {
@@ -112,6 +122,22 @@ impl MovePicker {
                     }
                     break;
                 }
+                Stage::QuietInit => {
+                    if position.checkers() != 0 {
+                        self.moves.generate(position, GenType::Evasion);
+                    } else {
+                        self.moves.generate(position, GenType::Captures);
+                    }
+                    self.stage = Stage::Quiet;
+                },
+                Stage::Quiet => {
+                    if self.cur < self.moves.size {
+                        let mv = self.moves.at(self.cur).mv;
+                        self.cur += 1;
+                        return Some(mv);
+                    }
+                    break;
+                },
             }
         }
         None

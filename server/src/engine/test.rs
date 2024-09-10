@@ -9,7 +9,7 @@ mod tests {
     use crate::engine::{
         movegen::{is_legal, is_pseudo_legal, GenType, MoveList},
         position::Position,
-        util::{
+        types::{
             bit, move_to_mfen, PieceType, Side, Square, PIECE_TYPE_NB, RANK_NB, SIDE_NB, SQUARE_NB,
         },
     };
