@@ -7,7 +7,11 @@ dev:
 server:
     #!/bin/bash
     cd alex
-    cargo watch -x "run -- --server-only"
+    cargo watch -x "run --bin alex-server -- --server-only"
+cli:
+    #!/bin/bash
+    cd alex
+    cargo watch -x "run --bin alex-cli"
 build:
     #!/bin/bash
     cd client

@@ -5,9 +5,8 @@ use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 
 use crate::{
-    change_bit,
+    change_bit, for_pos, foreach_bb,
     types::{flipped, get_capture, get_from, get_pt, PieceType},
-    for_pos, foreach_bb,
 };
 
 use super::types::{

@@ -4,11 +4,10 @@ use num_traits::FromPrimitive;
 use strum::IntoEnumIterator;
 
 use crate::{
-    change_bit,
+    change_bit, foreach_bb,
     types::{
         make_move_drop, make_move_normal, make_move_return, make_move_shoot, make_move_supply,
     },
-    foreach_bb,
 };
 
 use super::{

@@ -129,7 +129,7 @@ impl MovePicker {
                         self.moves.generate(position, GenType::Captures);
                     }
                     self.stage = Stage::Quiet;
-                },
+                }
                 Stage::Quiet => {
                     if self.cur < self.moves.size {
                         let mv = self.moves.at(self.cur).mv;
@@ -137,7 +137,7 @@ impl MovePicker {
                         return Some(mv);
                     }
                     break;
-                },
+                }
             }
         }
         None

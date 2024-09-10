@@ -1,12 +1,12 @@
 [workspace]
-members = ["crates/*"]
-default-members = ["crates/alex-server"]
+members = ["crates/alex", "crates/alex-cli", "crates/alex-server"]
+resolver = "2"
 
 [workspace.package]
-name = "alex"
 version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
 alex = { path = "crates/alex", version = "0.1.0" }
+alex-cli = { path = "crates/alex-server", version = "0.1.0" }
 alex-server = { path = "crates/alex-server", version = "0.1.0" }

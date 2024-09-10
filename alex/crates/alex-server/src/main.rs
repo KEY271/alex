@@ -4,13 +4,13 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use alex::position::Position;
 use api::{get_board, post_bestmove, post_board, post_move};
 use axum::{
     http::{header::CONTENT_TYPE, HeaderValue},
     routing::{get, post},
     Router,
 };
-use alex::position::Position;
 
 use tower_http::{cors::CorsLayer, services::ServeDir};
 
