@@ -58,6 +58,7 @@ pub struct Bestmove {
     mfen: String,
     depth: usize,
     value: Value,
+    root_moves: Vec<(String, Value)>,
 }
 
 pub async fn post_bestmove(Json(bmv): Json<Go>) -> Json<Bestmove> {
@@ -68,12 +69,18 @@ pub async fn post_bestmove(Json(bmv): Json<Go>) -> Json<Bestmove> {
             mfen: move_to_mfen(info.mv, position.side),
             depth: info.depth,
             value: info.value,
+            root_moves: info
+                .root_moves
+                .into_iter()
+                .map(|(mv, value)| (move_to_mfen(mv, position.side), value))
+                .collect(),
         })
     } else {
         Json(Bestmove {
             mfen: "resign".to_string(),
             depth: 0,
             value: 0,
+            root_moves: Vec::new(),
         })
     }
 }

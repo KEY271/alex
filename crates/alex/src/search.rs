@@ -33,6 +33,7 @@ pub struct SearchInfo {
     pub mv: Move,
     pub depth: usize,
     pub value: Value,
+    pub root_moves: Vec<(Move, Value)>,
 }
 
 pub fn search(position: &mut Position, time: f64) -> Option<SearchInfo> {
@@ -50,8 +51,13 @@ pub fn search(position: &mut Position, time: f64) -> Option<SearchInfo> {
         }
         depth += 1;
     }
-    if let Some((mv, value)) = result.into_iter().max_by_key(|v| v.1) {
-        Some(SearchInfo { mv, depth, value })
+    if let Some((mv, value)) = result.clone().into_iter().max_by_key(|v| v.1) {
+        Some(SearchInfo {
+            mv,
+            depth,
+            value,
+            root_moves: result,
+        })
     } else {
         None
     }

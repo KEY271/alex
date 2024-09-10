@@ -115,23 +115,21 @@ fn init_kkpee() -> Vec<Value> {
     kkpee
 }
 
-const PARAM_DEMISE_VALUE: Value = 400;
-
 /// Returns a static evaluation of the position from the point of view of the side to move.
 pub fn eval(position: &Position) -> Value {
-    let mut material = 0;
-    let our_pieces = position.piece_count[position.side as usize];
-    let opp_pieces = position.piece_count[!position.side as usize];
+    let mut value = 0;
+    let black_pieces = position.piece_count[Side::Black as usize];
+    let white_pieces = position.piece_count[Side::White as usize];
     for i in 1..PIECE_TYPE_NB {
         let pt = PieceType::from_usize(i).unwrap();
-        material += PIECE_VALUES[i] * (our_pieces[i] as Value - opp_pieces[i] as Value);
+        value += PIECE_VALUES[i] * (black_pieces[i] as Value - white_pieces[i] as Value);
         if pt != PieceType::King
             && pt != PieceType::Prince
             && pt != PieceType::Archer1
             && pt != PieceType::Archer2
         {
-            material += PIECE_VALUES[i] * position.count_hand(position.side, pt) as Value;
-            material -= PIECE_VALUES[i] * position.count_hand(!position.side, pt) as Value;
+            value += PIECE_VALUES[i] * position.count_hand(Side::Black, pt) as Value;
+            value -= PIECE_VALUES[i] * position.count_hand(Side::White, pt) as Value;
         }
     }
 
@@ -158,7 +156,6 @@ pub fn eval(position: &Position) -> Value {
         white_effects[sq as usize] += 1;
     });
 
-    let mut value = 0;
     let bking = position.crown_sq(Side::Black) as usize;
     let wking = position.crown_sq(Side::White) as usize;
     for sq in 0..SQUARE_NB {
@@ -172,12 +169,9 @@ pub fn eval(position: &Position) -> Value {
         )];
     }
 
-    value -= position.demise[Side::Black as usize] as Value * PARAM_DEMISE_VALUE;
-    value += position.demise[Side::White as usize] as Value * PARAM_DEMISE_VALUE;
-    material
-        + if position.side == Side::Black {
-            value
-        } else {
-            -value
-        }
+    if position.side == Side::Black {
+        value
+    } else {
+        -value
+    }
 }
