@@ -38,8 +38,8 @@ impl MoveList {
         self.size += 1;
     }
 
-    pub fn at(&self, index: usize) -> ExtMove {
-        unsafe { self.moves.get_unchecked(index).assume_init_read() }
+    pub fn at(&self, index: usize) -> &ExtMove {
+        unsafe { &*self.moves.get_unchecked(index).as_ptr() }
     }
 
     pub fn slice(&self, begin: usize) -> &[ExtMove] {
@@ -47,6 +47,7 @@ impl MoveList {
             std::slice::from_raw_parts(self.moves.get_unchecked(begin).as_ptr(), self.size - begin)
         }
     }
+
     pub fn slice_mut(&mut self, begin: usize) -> &mut [ExtMove] {
         unsafe {
             std::slice::from_raw_parts_mut(
