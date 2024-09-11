@@ -40,7 +40,7 @@ pub fn search(position: &mut Position, time: f64) -> Option<SearchInfo> {
     let keeper = TimeKeeper::new(time);
     let mut moves = MoveList::new();
     moves.generate(position, GenType::Legal);
-    let mut depth = 3;
+    let mut depth = 1;
     let mut result = Vec::new();
     loop {
         let res = search_root(&moves, position, -VALUE_INF, VALUE_INF, depth, &keeper);
