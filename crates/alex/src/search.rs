@@ -1,3 +1,5 @@
+use std::mem::MaybeUninit;
+
 use chrono::{DateTime, Local, TimeDelta};
 
 use super::{
@@ -33,7 +35,7 @@ pub struct SearchInfo {
     pub mv: Move,
     pub depth: usize,
     pub value: Value,
-    pub root_moves: Vec<(Move, Value)>,
+    pub root_moves: Vec<(Move, Value, Vec<Move>)>,
 }
 
 pub fn search(position: &mut Position, time: f64) -> Option<SearchInfo> {
@@ -51,15 +53,41 @@ pub fn search(position: &mut Position, time: f64) -> Option<SearchInfo> {
         }
         depth += 1;
     }
-    if let Some((mv, value)) = result.clone().into_iter().max_by_key(|v| v.1) {
+    // max_by_key returns the last max value, so we need to reverse the iterator.
+    if let Some((mv, value, _)) = result.clone().into_iter().rev().max_by_key(|v| v.1) {
+        let mut root_moves = Vec::new();
+        for (mv, value, line) in result {
+            let mut moves = Vec::new();
+            for i in 0..line.size {
+                moves.push(unsafe { *line.moves.get_unchecked(i).as_ptr() });
+            }
+            root_moves.push((mv, value, moves));
+        }
         Some(SearchInfo {
             mv,
             depth,
             value,
-            root_moves: result,
+            root_moves,
         })
     } else {
         None
+    }
+}
+
+const MAX_MOVE: usize = 64;
+
+#[derive(Clone)]
+struct Line {
+    moves: [MaybeUninit<Move>; MAX_MOVE],
+    size: usize,
+}
+
+impl Line {
+    fn new() -> Self {
+        Line {
+            moves: unsafe { MaybeUninit::uninit().assume_init() },
+            size: 0,
+        }
     }
 }
 
@@ -70,7 +98,7 @@ fn search_root(
     beta: Value,
     depth: usize,
     keeper: &TimeKeeper,
-) -> Vec<(Move, Value)> {
+) -> Vec<(Move, Value, Line)> {
     let mut vec = Vec::new();
 
     let mut alpha = alpha;
@@ -79,10 +107,11 @@ fn search_root(
         if keeper.passed() {
             return vec;
         }
+        let mut line = Line::new();
         let mv = moves.at(i).mv;
         position.do_move(mv, None);
-        let ev = -search_node(position, -beta, -alpha, depth - 1, keeper);
-        vec.push((mv, ev));
+        let ev = -search_node(position, -beta, -alpha, depth - 1, keeper, &mut line);
+        vec.push((mv, ev, line));
         position.undo_move(mv);
         if ev > alpha {
             alpha = ev;
@@ -101,14 +130,18 @@ fn search_node(
     beta: Value,
     depth: usize,
     keeper: &TimeKeeper,
+    pline: &mut Line,
 ) -> Value {
     if keeper.passed() {
         return 0;
     }
 
     if depth <= 0 {
+        pline.size = 0;
         return qsearch(position, alpha, beta, 0, keeper);
     }
+
+    let mut line = Line::new();
 
     let mut bestvalue = -VALUE_INF;
     let mut alpha = alpha;
@@ -124,7 +157,7 @@ fn search_node(
             move_count += 1;
 
             position.do_move(mv, None);
-            let ev = -search_node(position, -beta, -alpha, depth - 1, keeper);
+            let ev = -search_node(position, -beta, -alpha, depth - 1, keeper, &mut line);
             position.undo_move(mv);
 
             if ev > bestvalue {
@@ -132,6 +165,13 @@ fn search_node(
             }
             if ev > alpha {
                 alpha = ev;
+                if alpha < beta {
+                    unsafe {
+                        *pline.moves.get_unchecked_mut(0).as_mut_ptr() = mv;
+                    }
+                    pline.moves[1..line.size + 1].copy_from_slice(&line.moves[..line.size]);
+                    pline.size = line.size + 1;
+                }
             }
             if alpha >= beta {
                 break;

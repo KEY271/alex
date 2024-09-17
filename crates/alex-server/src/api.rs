@@ -59,21 +59,29 @@ pub struct Bestmove {
     depth: usize,
     value: Value,
     root_moves: Vec<(String, Value)>,
+    pv: Vec<String>,
 }
 
 pub async fn post_bestmove(Json(bmv): Json<Go>) -> Json<Bestmove> {
     println!("POST: /api/bestmove; {}, {}s", bmv.mfen, bmv.time);
     let mut position = Position::from_str(&bmv.mfen).unwrap();
     if let Some(info) = search(&mut position, bmv.time) {
+        let mut root_moves = Vec::new();
+        let mut pv = Vec::new();
+        for (mv, value, line) in info.root_moves {
+            root_moves.push((move_to_mfen(mv, position.side), value));
+            if mv == info.mv {
+                for mv in line {
+                    pv.push(move_to_mfen(mv, position.side));
+                }
+            }
+        }
         Json(Bestmove {
             mfen: move_to_mfen(info.mv, position.side),
             depth: info.depth,
             value: info.value,
-            root_moves: info
-                .root_moves
-                .into_iter()
-                .map(|(mv, value)| (move_to_mfen(mv, position.side), value))
-                .collect(),
+            root_moves,
+            pv,
         })
     } else {
         Json(Bestmove {
@@ -81,6 +89,7 @@ pub async fn post_bestmove(Json(bmv): Json<Go>) -> Json<Bestmove> {
             depth: 0,
             value: 0,
             root_moves: Vec::new(),
+            pv: Vec::new(),
         })
     }
 }

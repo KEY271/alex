@@ -37,7 +37,7 @@ function App() {
 
     const [score, setScore] = useState(0);
     const [depth, setDepth] = useState(0);
-    const [rootMoves, setRootMoves] = useState([]);
+    const [PV, setPV] = useState([]);
 
     const getBestMove = async () => {
         if (inputRef.current == undefined) {
@@ -55,7 +55,6 @@ function App() {
         setCountdown(value);
         setScore(0);
         setDepth(0);
-        setRootMoves([]);
         const res = await post("bestmove", {
             mfen: board.mfen(),
             time: value
@@ -64,8 +63,7 @@ function App() {
         await post("move", { mfen: data.mfen });
         setScore(data.value);
         setDepth(data.depth);
-        const moves = data.root_moves.sort((a: [string, number], b: [string, number]) => b[1] - a[1]);
-        setRootMoves(moves);
+        setPV(data.pv);
         setCountdown(0);
         dispatch(setHistory(getMoveSquares(data.mfen)));
         setCount((c) => c + 1);
@@ -82,15 +80,7 @@ function App() {
         return () => clearInterval(id);
     }, [countdown]);
 
-    const root = (
-        <div>
-            {rootMoves.map((move: [string, number], i: number) => (
-                <div key={i}>
-                    {move[0]}:{move[1]}
-                </div>
-            ))}
-        </div>
-    );
+    const pv = PV.map((move: string, i: number) => <div key={i}>{move}</div>);
 
     return (
         <div className="grid h-full grid-cols-[360px_1fr] sm:grid-cols-[520px_1fr]">
@@ -113,7 +103,7 @@ function App() {
                 <div>{countdown.toFixed(1)}</div>
                 <div>評価値: {score}</div>
                 <div>読んだ手: {depth}</div>
-                <div className="overflow-y-scroll h-80 border border-black w-24">{root}</div>
+                <div className="h-80 w-24 overflow-y-scroll border border-black">{pv}</div>
             </div>
         </div>
     );
